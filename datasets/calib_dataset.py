@@ -1,7 +1,6 @@
 # 专门为calibration写的dataset，因为不需要gt，只要一个图片文件夹用于校准
 # 注意transform可能要修改，应当与训练保持一样
 # 同时也要注意推理的时候也需要做transform，比如归一化，之前没注意，可能影响精度
-# TODO
 
 import os
 from PIL import Image
@@ -11,6 +10,11 @@ from torchvision import transforms
 from typing import Optional, Callable, List, Tuple
 from config import Config
 from datasets.common_transform import common_transform_list
+import random
+from torch.utils.data import Subset
+
+from utils.logger import setup_logger
+logger = setup_logger('dataset')
 
 class SimpleImageDataset(Dataset):
     """
@@ -51,31 +55,23 @@ class SimpleImageDataset(Dataset):
             if self.transform:
                 img = self.transform(img)
             return img
-
-# Example usage
-def create_dataloader(
-    img_dir: str,
-    batch_size: int = 1,
-    num_workers: int = 0,
-    custom_transform: Optional[Callable] = None
-) -> DataLoader:
-    """
-    Create a DataLoader for the image dataset
-    
-    Args:
-        img_dir: Directory containing images
-        batch_size: Batch size for the dataloader
-        num_workers: Number of worker processes for data loading
-        custom_transform: Optional custom transform pipeline
         
-    Returns:
-        DataLoader instance
-    """
+def get_calib_dataset(img_dir: str = Config.CALIB_DIR, 
+                      custom_transform: Optional[Callable] = transforms.Compose(common_transform_list)) -> SimpleImageDataset:
+        # 创建完整数据集
     dataset = SimpleImageDataset(
         img_dir=img_dir,
         transform=custom_transform
     )
-    
+    return dataset
+
+def create_dataloader(
+    dataset,
+    batch_size: int = 1,
+    num_workers: int = 0,
+    custom_transform: Optional[Callable] = None
+) -> DataLoader:
+
     dataloader = DataLoader(
         dataset,
         batch_size=batch_size,
@@ -85,6 +81,36 @@ def create_dataloader(
 
     return dataloader
 
-def get_calib_dataloader():
-    data_loader = create_dataloader(Config.CALIB_DIR, custom_transform=transforms.Compose(common_transform_list))
-    return data_loader
+def create_fixed_size_dataloader(
+    dataset: SimpleImageDataset,
+    num_images: int = 10,  # 想要的图片数量
+    batch_size: int = 1, # TODO: 这里bs>1会出现输入图像大小不一致的问题，需要resize
+    num_workers: int = 0,
+    custom_transform: Optional[Callable] = None,
+    seed: int = 42  # 可选的随机种子，保证每次采样结果一致
+) -> DataLoader:
+    
+    # 确保请求的图片数量不超过数据集大小
+    num_images = min(num_images, len(dataset))
+    
+    # 设置随机种子以保证可重复性
+    # random.seed(seed)
+    
+    # 随机采样指定数量的索引
+    indices = random.sample(range(len(dataset)), num_images)
+
+    # 打印采样的索引
+    logger.info(f"Calib dataloader sampled indices: {indices}")
+    
+    # 创建子数据集
+    subset_dataset = Subset(dataset, indices)
+    
+    # 创建数据加载器
+    dataloader = DataLoader(
+        subset_dataset,
+        batch_size=batch_size,
+        shuffle=True,
+        num_workers=num_workers,
+    )
+
+    return dataloader

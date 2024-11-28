@@ -2,6 +2,9 @@ from models.fpn.ofa_supernet_mbv3_w12_fcos_fpn import Mbv3W12FcosFpn
 from models.backbone.ofa_supernet import get_ofa_supernet_mbv3_w12
 from torchvision.models.detection import FCOS
 
+from utils.logger import setup_logger
+logger = setup_logger('model')
+
 def get_ofa_mbv3_w12_fcos_model(num_classes = 91):
     '''
     这里backbone权重是预训练的supernet，其他层权重未训练
@@ -19,13 +22,13 @@ def load_pretrained_fcos(model):
         if key in model.state_dict().keys():
             # 注意mobilenet 特征金字塔的维数和预训练的resnet50有差，所以这部分权重不能复制（虽然key一样）
             if 'fpn' in key:
-                # print('Ignore FPN keys ', key)
+                # logger.info('Ignore FPN keys ', key)
                 continue
             model.state_dict()[key].copy_(pretrained_fcos_fpn.state_dict()[key])
         else:
-            # print('key not in ofa_fcos: ', key)
+            # logger.info('key not in ofa_fcos: ', key)
             pass
-    print('Pretrained weights loaded.')
+    logger.info('Pretrained weights loaded.')
 
 def set_training_params(model, is_backbone_body_need_training = False,
                         is_backbone_dynamic_convs_need_training = True,
@@ -49,4 +52,4 @@ def set_training_params(model, is_backbone_body_need_training = False,
     # 打印出需要训练的参数
     for name, param in model.named_parameters():
         if param.requires_grad:
-            print(name)
+            logger.info(name)
