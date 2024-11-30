@@ -55,7 +55,7 @@ class SimpleImageDataset(Dataset):
             if self.transform:
                 img = self.transform(img)
             return img
-        
+
 def get_calib_dataset(img_dir: str = Config.CALIB_DIR, 
                       custom_transform: Optional[Callable] = transforms.Compose(common_transform_list)) -> SimpleImageDataset:
         # 创建完整数据集
@@ -64,6 +64,23 @@ def get_calib_dataset(img_dir: str = Config.CALIB_DIR,
         transform=custom_transform
     )
     return dataset
+
+def collate_fn(batch):
+    # 找出这个batch中的最大高度和宽度
+    max_height = max(img.size(1) for img in batch)
+    max_width = max(img.size(2) for img in batch)
+    
+    # 创建新的tensor来存储
+    batch_size = len(batch)
+    channels = batch[0].size(0)
+    batch_tensor = torch.zeros(batch_size, channels, max_height, max_width)
+    
+    # 填充每张图片
+    for i, img in enumerate(batch):
+        c, h, w = img.size()
+        batch_tensor[i, :, :h, :w] = img
+        
+    return batch_tensor
 
 def create_dataloader(
     dataset,
@@ -77,6 +94,7 @@ def create_dataloader(
         batch_size=batch_size,
         shuffle=True,  # Shuffle to get random batches
         num_workers=num_workers,
+        collate_fn=collate_fn
     )
 
     return dataloader
@@ -111,6 +129,7 @@ def create_fixed_size_dataloader(
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
+        collate_fn=collate_fn
     )
 
     return dataloader

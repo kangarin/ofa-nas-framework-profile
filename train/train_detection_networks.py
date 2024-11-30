@@ -34,7 +34,7 @@ def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate =
             if not data:  # 如果data为空
                 continue  # 跳过当前迭代，继续下一个迭代
             # coco数据集太大，本地微调只用了一部分，正式训练应该删除
-            if i > 10000:
+            if i > 5000:
                 break        
             images, targets = data
             images = [image.to(device) for image in images]
