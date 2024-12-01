@@ -27,6 +27,23 @@ def train_fcos_resnet50():
     train(model, 5, 'ofa_resnet50_fcos.pth', batch_size=2)
     model = torch.load('ofa_resnet50_fcos.pth')    
 
+def train_fasterrcnn_mbv3_w12():
+    from train.train_detection_networks import train
+    from models.detection.ofa_mbv3_w12_fasterrcnn import get_ofa_mbv3_w12_fasterrcnn_model, load_pretrained_fasterrcnn, set_training_params
+    model = get_ofa_mbv3_w12_fasterrcnn_model()
+    load_pretrained_fasterrcnn(model)
+    set_training_params(model)
+    train(model, 5, 'ofa_mbv3_w12_fasterrcnn.pth', batch_size=2)
+    model = torch.load('ofa_mbv3_w12_fasterrcnn.pth')
+
+def train_fasterrcnn_resnet50():
+    from train.train_detection_networks import train
+    from models.detection.ofa_resnet50_fasterrcnn import get_ofa_resnet50_fasterrcnn_model, load_pretrained_fasterrcnn, set_training_params
+    model = get_ofa_resnet50_fasterrcnn_model()
+    load_pretrained_fasterrcnn(model)
+    set_training_params(model)
+    train(model, 5, 'ofa_resnet50_fasterrcnn.pth', batch_size=2)
+    model = torch.load('ofa_resnet50_fasterrcnn.pth')
 
 def test_det_api():
     import torch
@@ -36,6 +53,7 @@ def test_det_api():
     from PIL import Image
 
     model = torch.load('ofa_mbv3_w12_fcos.pth')
+    # model = torch.load('ofa_resnet50_fcos.pth')
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
     image_path1 = "D:\Projects\python\smart-dnn-framework\my_experiments\ILSVRC2012_val_00000384.JPEG"
@@ -112,9 +130,33 @@ def test_calib_bs():
     model = get_ofa_mbv3_w12_fcos_model()
     set_running_statistics(model, calib_dataloader)
 
+def test_fpn_with_other_det():
+    from models.fpn.ofa_supernet_mbv3_w12_fcos_fpn import Mbv3W12FcosFpn
+    from models.backbone.ofa_supernet import get_ofa_supernet_mbv3_w12
+    fpn = Mbv3W12FcosFpn(get_ofa_supernet_mbv3_w12())
+    from torchvision.models.detection import FasterRCNN
+    model = FasterRCNN(backbone = fpn, num_classes = 91)
+    print(model)
+    import torch
+    # test forward and backward
+    for i in range(10):
+        subnet_config = model.backbone.body.sample_active_subnet()
+        model.backbone.body.set_active_subnet(**subnet_config)
+        print(subnet_config)
+        images = torch.randn(2, 3, 224, 224)
+        targets = [{'boxes': torch.tensor([[0, 0, 100, 100], [50, 50, 150, 150]]), 'labels': torch.tensor([1, 2])},
+                   {'boxes': torch.tensor([[0, 0, 100, 100], [50, 50, 150, 150]]), 'labels': torch.tensor([1, 2])}]
+        loss_dict = model(images, targets)
+        losses = sum(loss for loss in loss_dict.values())
+        losses.backward()
+        print(losses)
+
 if __name__ == '__main__':
     # train_fcos_mbv3_w12()
-    train_fcos_resnet50()
+    # train_fcos_resnet50()
+    # train_fasterrcnn_mbv3_w12()
+    train_fasterrcnn_resnet50()
     # test_calib_bs()
     # test_det_api()
     # test_model_api()
+    # test_fpn_with_other_det()

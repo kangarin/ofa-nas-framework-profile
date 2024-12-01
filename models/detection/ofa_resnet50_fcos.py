@@ -20,6 +20,10 @@ def load_pretrained_fcos(model):
     pretrained_fcos_fpn = fcos_resnet50_fpn(weights = FCOS_ResNet50_FPN_Weights.COCO_V1)
     for key in pretrained_fcos_fpn.state_dict().keys():
         if key in model.state_dict().keys():
+            # 判断形状是否一致
+            if model.state_dict()[key].shape != pretrained_fcos_fpn.state_dict()[key].shape:
+                # logger.info('Shape not match ', key)
+                continue
             model.state_dict()[key].copy_(pretrained_fcos_fpn.state_dict()[key])
         else:
             # logger.info('key not in ofa_fcos: ', key)

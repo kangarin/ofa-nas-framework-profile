@@ -11,7 +11,10 @@ def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate =
 
     # 设置优化器
     params_backbone = [p for p in model.backbone.parameters() if p.requires_grad]
-    params_head = [p for p in model.head.parameters() if p.requires_grad]
+    if hasattr(model, 'head'):
+        params_head = [p for p in model.head.parameters() if p.requires_grad]
+    elif hasattr(model, 'roi_heads'):
+        params_head = [p for p in model.roi_heads.parameters() if p.requires_grad]
 
     params = [{'params': params_backbone, 'lr': backbone_learning_rate}, {'params': params_head, 'lr': head_learning_rate}]
     optimizer = torch.optim.SGD(params, momentum=0.9, weight_decay=1e-4)

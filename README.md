@@ -15,3 +15,8 @@ super_net_name = "ofa_supernet_mbv3_w10"
 
 super_net = torch.hub.load('mit-han-lab/once-for-all', super_net_name, pretrained=True).eval()
 ```
+
+需要修改config.py中数据集的路径：
+- imagenet-mini：https://www.kaggle.com/datasets/ifigotin/imagenetmini-1000  注意，可能需要额外下载ISVRC2012_devkit_t12.tar.gz
+- COCO2017：https://cocodataset.org/#download 下载train val 和 annotations
+- calib：可以用验证集，用作子网络bn层的calibration
