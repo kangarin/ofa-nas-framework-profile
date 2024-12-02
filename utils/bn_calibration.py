@@ -5,7 +5,7 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-def set_running_statistics(model, image_loader, max_iters=50):
+def set_running_statistics(model, image_loader, max_iters=100):
     bn_mean = {}
     bn_var = {}
     forward_model = copy.deepcopy(model)    

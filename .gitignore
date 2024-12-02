@@ -103,3 +103,4 @@ doc/build/
 # models/
 # experiments/
 .torch/
+*.db

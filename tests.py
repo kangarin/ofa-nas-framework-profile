@@ -190,7 +190,7 @@ def some_test():
     from evaluation.classification_accuracy_eval import eval_accuracy
     input_size = 224
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    result = eval_accuracy(model, input_size, dataloader, device, (1, 5))
+    result = eval_accuracy(model, input_size, dataloader, 100, device, (1, 5))
     print(f'Accuracy: {result}')
 
 def some_test1():
@@ -230,14 +230,29 @@ def some_test3():
     result = eval_accuracy(model, 224, 100, device)
     print(result)
 
+def test_search_res50():
+    from models.backbone.ofa_supernet import get_ofa_supernet_resnet50
+    from arch_search.arch_search_ofa_resnet50 import create_study, run_study
+    study = create_study("test_search")
+    model = get_ofa_supernet_resnet50()
+    run_study(model, study, 100, 'cuda', [240, 360, 480])
+
+def test_search_res50_fcos():
+    from models.detection.ofa_resnet50_fcos import get_ofa_resnet50_fcos_model
+    from arch_search.arch_search_ofa_resnet50_fcos import create_study, run_study
+    study = create_study("test_seach_det")
+    model = torch.load('ofa_resnet50_fcos.pth')
+    run_study(model, study, 100, 'cuda', [240, 360, 480])
+
 if __name__ == '__main__':
     # train_fcos_mbv3_w12()
     # train_fcos_resnet50()
     # train_fasterrcnn_mbv3_w12()
     # train_fasterrcnn_resnet50()
     # test_calib_bs()
-    test_det_api()
+    # test_det_api()
     # test_model_api()
     # test_fpn_with_other_det()
-
     # some_test3()
+    test_search_res50()
+    # test_search_res50_fcos()
