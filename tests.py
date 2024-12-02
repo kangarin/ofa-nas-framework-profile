@@ -68,7 +68,7 @@ def test_det_api():
         print(subnet_config)
 
         from evaluation.detection_accuracy_eval import eval_accuracy
-        eval_accuracy(model, device, 100)
+        eval_accuracy(model, 640, 100, device)
 
         # 保存原始图像用于显示
         pil_img1 = Image.open(image_path1).convert("RGB")
@@ -226,11 +226,8 @@ def some_test3():
     # model = fcos_resnet50_fpn(weights=FCOS_ResNet50_FPN_Weights.COCO_V1)
     from torchvision.models.detection import fasterrcnn_resnet50_fpn, FasterRCNN_ResNet50_FPN_Weights
     model = fasterrcnn_resnet50_fpn(weights=FasterRCNN_ResNet50_FPN_Weights.COCO_V1)
-    from datasets.coco_dataset import get_dataloader, get_test_dataset
-    dataset = get_test_dataset()
-    dataloader = get_dataloader(dataset, 1)
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
-    result = eval_accuracy(model, device, 100)
+    result = eval_accuracy(model, 224, 100, device)
     print(result)
 
 if __name__ == '__main__':
@@ -239,8 +236,8 @@ if __name__ == '__main__':
     # train_fasterrcnn_mbv3_w12()
     # train_fasterrcnn_resnet50()
     # test_calib_bs()
-    # test_det_api()
+    test_det_api()
     # test_model_api()
     # test_fpn_with_other_det()
 
-    some_test()
+    # some_test3()
