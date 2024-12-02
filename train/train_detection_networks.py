@@ -3,7 +3,8 @@ from utils.bn_calibration import set_running_statistics
 from datasets.calib_dataset import get_calib_dataset, create_fixed_size_dataloader
 from datasets.coco_dataset import get_train_dataset, get_dataloader
 import torch
-
+from datasets.common_transform import common_transform_list
+from torchvision import transforms
 from utils.logger import setup_logger
 logger = setup_logger('train')
 
@@ -23,7 +24,8 @@ def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate =
     logger.info(f"Start training, using device: {device}")
     model.to(device)
     # 训练模型
-    calib_dataset = get_calib_dataset()
+    calib_dataset = get_calib_dataset(custom_transform=transforms.Compose(common_transform_list))
+    # 这里calib集合当然是越大越好，测试时设小了点加速训练
     calib_dataloader = create_fixed_size_dataloader(calib_dataset, 10)
     set_running_statistics(model, calib_dataloader, 10)
 
@@ -45,7 +47,7 @@ def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate =
 
             ofa_network = model.backbone.body
             # 第一轮，直接用max subnet来确保动态的连接层能学到比较好的初始值
-            if epoch == -1:
+            if epoch == 0:
                 ofa_network.set_max_net()
             # 否则，用sample出来的子网络
             else:
@@ -54,8 +56,8 @@ def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate =
                     subnet_config = ofa_network.sample_active_subnet()
                     ofa_network.set_active_subnet(**subnet_config)
                     # 这里每次都重新创建data_loader，增加calib的随机性，从而提高泛化能力
-                    calib_dataloader = create_fixed_size_dataloader(calib_dataset, 10)
-                    set_running_statistics(model, calib_dataloader, 10)
+                    calib_dataloader = create_fixed_size_dataloader(calib_dataset, 100)
+                    set_running_statistics(model, calib_dataloader, 100)
 
             # 计算损失
             loss_dict = model(images, targets)

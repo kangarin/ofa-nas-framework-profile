@@ -1,6 +1,6 @@
 from config import Config
 imagenet_dir = Config.IMAGENET_DIR
-from datasets.common_transform import common_transform_list, collate_fn_pad
+from datasets.common_transform import common_transform_with_normalization_list, collate_fn_pad
 from torchvision import transforms
 from torch.utils.data import DataLoader
 from torchvision.datasets import ImageNet
@@ -10,7 +10,7 @@ def get_train_dataset():
     train_dataset = ImageNet(
         root=imagenet_dir,
         split='train',
-        transform=transforms.Compose(common_transform_list)
+        transform=transforms.Compose(common_transform_with_normalization_list)
     )
     return train_dataset
 
@@ -18,7 +18,7 @@ def get_test_dataset():
     test_dataset = ImageNet(
         root=imagenet_dir,
         split='val',
-        transform=transforms.Compose(common_transform_list)
+        transform=transforms.Compose(common_transform_with_normalization_list)
     )
     return test_dataset
 

@@ -56,9 +56,13 @@ class SimpleImageDataset(Dataset):
                 img = self.transform(img)
             return img
 
-def get_calib_dataset(img_dir: str = Config.CALIB_DIR, 
-                      custom_transform: Optional[Callable] = transforms.Compose(common_transform_list)) -> SimpleImageDataset:
-        # 创建完整数据集
+def get_calib_dataset(custom_transform: Optional[Callable], 
+                      img_dir: str = Config.CALIB_DIR) -> SimpleImageDataset:
+    '''
+    !!!!!!!!! 必须要注意，这里的transform必须要和训练时的transform保持一致，否则会影响精度 !!!!!!!!!
+    比如，分类模型要normalize，检测模型不要normalize
+    '''
+    # 创建完整数据集
     dataset = SimpleImageDataset(
         img_dir=img_dir,
         transform=custom_transform

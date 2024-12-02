@@ -44,7 +44,7 @@ def eval_accuracy(model, input_size, dataloader, device, topk=(1,), show_progres
                 total += batch_size
                 
                 if show_progress:
-                    iterator.set_description(f'Evaluating - Batch Size: {batch_size}')
+                    iterator.set_description(f'Evaluating...')
                     
     except Exception as e:
         print(f"Error during evaluation: {str(e)}")
