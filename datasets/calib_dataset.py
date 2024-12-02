@@ -9,7 +9,7 @@ from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms
 from typing import Optional, Callable, List, Tuple
 from config import Config
-from datasets.common_transform import common_transform_list
+from datasets.common_transform import common_transform_list, collate_fn_pad_calibration
 import random
 from torch.utils.data import Subset
 
@@ -65,23 +65,6 @@ def get_calib_dataset(img_dir: str = Config.CALIB_DIR,
     )
     return dataset
 
-def collate_fn(batch):
-    # 找出这个batch中的最大高度和宽度
-    max_height = max(img.size(1) for img in batch)
-    max_width = max(img.size(2) for img in batch)
-    
-    # 创建新的tensor来存储
-    batch_size = len(batch)
-    channels = batch[0].size(0)
-    batch_tensor = torch.zeros(batch_size, channels, max_height, max_width)
-    
-    # 填充每张图片
-    for i, img in enumerate(batch):
-        c, h, w = img.size()
-        batch_tensor[i, :, :h, :w] = img
-        
-    return batch_tensor
-
 def create_dataloader(
     dataset,
     batch_size: int = 1,
@@ -94,7 +77,7 @@ def create_dataloader(
         batch_size=batch_size,
         shuffle=True,  # Shuffle to get random batches
         num_workers=num_workers,
-        collate_fn=collate_fn
+        collate_fn=collate_fn_pad_calibration
     )
 
     return dataloader
@@ -102,7 +85,7 @@ def create_dataloader(
 def create_fixed_size_dataloader(
     dataset: SimpleImageDataset,
     num_images: int = 10,  # 想要的图片数量
-    batch_size: int = 1, # TODO: 这里bs>1会出现输入图像大小不一致的问题，需要resize
+    batch_size: int = 1, 
     num_workers: int = 0,
     custom_transform: Optional[Callable] = None,
     seed: int = 42  # 可选的随机种子，保证每次采样结果一致
@@ -129,7 +112,7 @@ def create_fixed_size_dataloader(
         batch_size=batch_size,
         shuffle=True,
         num_workers=num_workers,
-        collate_fn=collate_fn
+        collate_fn=collate_fn_pad_calibration
     )
 
     return dataloader

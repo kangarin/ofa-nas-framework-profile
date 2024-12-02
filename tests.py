@@ -151,12 +151,45 @@ def test_fpn_with_other_det():
         losses.backward()
         print(losses)
 
+def some_test():
+    from datasets.imagenet_dataset import get_test_dataset, get_dataloader
+    dataset = get_test_dataset()
+    dataloader = get_dataloader(dataset, 4)
+    from models.backbone.ofa_supernet import get_ofa_supernet_mbv3_w12
+    model = get_ofa_supernet_mbv3_w12()
+    from evaluation.classification_accuracy_eval import eval_accuracy
+    input_size = 224
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+    result = eval_accuracy(model, input_size, dataloader, device)
+    print(f'Accuracy: {result}')
+
+def some_test1():
+    from datasets.coco_dataset import get_test_dataset, get_dataloader
+    dataset = get_test_dataset()
+    dataloader = get_dataloader(dataset, 4)
+    from torchvision.models.detection.fcos import fcos_resnet50_fpn, FCOS_ResNet50_FPN_Weights
+    model = fcos_resnet50_fpn(weights=FCOS_ResNet50_FPN_Weights.DEFAULT)
+    model.eval()
+    for image, _ in dataloader:
+        result = model(image)
+        print(result)
+
+def some_test2():
+    from datasets.calib_dataset import get_calib_dataset, create_fixed_size_dataloader
+    dataset = get_calib_dataset()
+    dataloader = create_fixed_size_dataloader(dataset, 10, 2)
+    from models.detection.ofa_resnet50_fcos import get_ofa_resnet50_fcos_model
+    model = get_ofa_resnet50_fcos_model()
+    set_running_statistics(model, dataloader, 10)
+
 if __name__ == '__main__':
     # train_fcos_mbv3_w12()
     # train_fcos_resnet50()
     # train_fasterrcnn_mbv3_w12()
-    train_fasterrcnn_resnet50()
+    # train_fasterrcnn_resnet50()
     # test_calib_bs()
     # test_det_api()
     # test_model_api()
     # test_fpn_with_other_det()
+
+    some_test2()

@@ -60,6 +60,9 @@ def get_test_dataset():
 def get_dataloader(dataset, batch_size):
     return DataLoader(dataset, batch_size, shuffle = True, collate_fn = collate_fn)
 
+def get_labels():
+    return coco_labels
+
 # COCO标签映射
 coco_labels = [
     '__background__', 'person', 'bicycle', 'car', 'motorcycle', 'airplane', 'bus',
