@@ -14,7 +14,7 @@ def train_fcos_mbv3_w12():
     from models.detection.ofa_mbv3_w12_fcos import get_ofa_mbv3_w12_fcos_model, load_pretrained_fcos, set_training_params
     model = get_ofa_mbv3_w12_fcos_model()
     load_pretrained_fcos(model)
-    set_training_params(model)
+    set_training_params(model, is_backbone_body_need_training=True)
     train(model, 5, 'ofa_mbv3_w12_fcos.pth', batch_size=1)
     model = torch.load('ofa_mbv3_w12_fcos.pth')
 
@@ -32,8 +32,8 @@ def train_fasterrcnn_mbv3_w12():
     from models.detection.ofa_mbv3_w12_fasterrcnn import get_ofa_mbv3_w12_fasterrcnn_model, load_pretrained_fasterrcnn, set_training_params
     model = get_ofa_mbv3_w12_fasterrcnn_model()
     load_pretrained_fasterrcnn(model)
-    set_training_params(model)
-    train(model, 5, 'ofa_mbv3_w12_fasterrcnn.pth', batch_size=2)
+    set_training_params(model, is_backbone_body_need_training=True)
+    train(model, 5, 'ofa_mbv3_w12_fasterrcnn.pth', batch_size=1)
     model = torch.load('ofa_mbv3_w12_fasterrcnn.pth')
 
 def train_fasterrcnn_resnet50():
@@ -233,26 +233,49 @@ def some_test3():
 def test_search_res50():
     from models.backbone.ofa_supernet import get_ofa_supernet_resnet50
     from arch_search.arch_search_ofa_resnet50 import create_study, run_study
-    study = create_study("test_search")
+    study = create_study("test_search_resnet50")
     model = get_ofa_supernet_resnet50()
     run_study(model, study, 100, 'cuda', [240, 360, 480])
 
 def test_search_res50_fcos():
-    from models.detection.ofa_resnet50_fcos import get_ofa_resnet50_fcos_model
     from arch_search.arch_search_ofa_resnet50_fcos import create_study, run_study
-    study = create_study("test_seach_det")
+    study = create_study("test_search_resnet50_fcos")
     model = torch.load('ofa_resnet50_fcos.pth')
     run_study(model, study, 100, 'cuda', [240, 360, 480])
+
+def test_search_mbv3_w12():
+    from arch_search.arch_search_ofa_mbv3_w12 import create_study, run_study
+    from models.backbone.ofa_supernet import get_ofa_supernet_mbv3_w12
+    study = create_study("test_search_mbv3")
+    model = get_ofa_supernet_mbv3_w12()
+    run_study(model, study, 100, 'cuda', [240, 360, 480])
+
+def test_search_mbv3_w12_fcos():
+    from arch_search.arch_search_ofa_mbv3_w12_fcos import create_study, run_study
+    # 限制显存到2GB (Nano的显存大小)
+    torch.cuda.set_per_process_memory_fraction(0.25)  # 3070 8GB的25%约等于2GB   
+    study = create_study("test_search_mbv3_fcos")
+    model = torch.load('ofa_mbv3_w12_fcos.pth')
+    run_study(model, study, 100, 'cuda', [240, 360, 480])
+
+def test_pareto_front():
+    import optuna
+    exp = optuna.load_study(study_name="test_search_mbv3_fcos", storage="sqlite:///test_search_mbv3_fcos.db")
+    for t in exp.best_trials:
+        print(t.number, t.values)
 
 if __name__ == '__main__':
     # train_fcos_mbv3_w12()
     # train_fcos_resnet50()
-    # train_fasterrcnn_mbv3_w12()
+    train_fasterrcnn_mbv3_w12()
     # train_fasterrcnn_resnet50()
     # test_calib_bs()
     # test_det_api()
     # test_model_api()
     # test_fpn_with_other_det()
     # some_test3()
-    test_search_res50()
+    # test_search_res50()
     # test_search_res50_fcos()
+    # test_search_mbv3_w12()
+    # test_search_mbv3_w12_fcos()
+    # test_pareto_front()

@@ -9,7 +9,7 @@ from torchvision import transforms
 from utils.bn_calibration import set_running_statistics
 import torch
 
-class ArchSearchOFAResnet50Fcos:
+class ArchSearchOFAMbv3W12Fcos:
     def __init__(self, model, device, resolution_list):
         self.model = model
         self.device = device
@@ -19,7 +19,7 @@ class ArchSearchOFAResnet50Fcos:
 
     def objective(self, trial):
         trial_number = trial.number
-        arch_dict = get_architecture_dict('ofa_supernet_resnet50')
+        arch_dict = get_architecture_dict('ofa_supernet_mbv3_w12')
 
         # 动态创建所有架构参数
         config = {}
@@ -74,7 +74,7 @@ def create_study(study_name):
     return study
 
 def run_study(model, study, n_trials, device, resolution_list):
-    arch_searcher = ArchSearchOFAResnet50Fcos(model, device, resolution_list)
+    arch_searcher = ArchSearchOFAMbv3W12Fcos(model, device, resolution_list)
     objective = arch_searcher.objective
     study.optimize(objective, n_trials=n_trials)
 

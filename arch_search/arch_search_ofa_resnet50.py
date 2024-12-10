@@ -8,6 +8,7 @@ from datasets.calib_dataset import get_calib_dataset, create_fixed_size_dataload
 from datasets.common_transform import common_transform_with_normalization_list
 from torchvision import transforms
 from utils.bn_calibration import set_running_statistics
+import torch
 
 class ArchSearchOFAResnet50:
     def __init__(self, model, device, resolution_list):
@@ -56,6 +57,8 @@ class ArchSearchOFAResnet50:
 def get_accuracy(model, config, img_size, eval_dataloader, calib_dataloader, device):
     model.set_active_subnet(**config)
     set_running_statistics(model, calib_dataloader)
+    # 对于精度，可以用gpu加速
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
     result = eval_accuracy(model, img_size, eval_dataloader, 100, device, topk=(1, 5), show_progress=True)
     return result[1]
 

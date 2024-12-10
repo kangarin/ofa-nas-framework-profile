@@ -6,6 +6,9 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 def set_running_statistics(model, image_loader, max_iters=100):
+    # 对于bn测量，可以用gpu加速
+    device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
+    model = model.to(device)
     bn_mean = {}
     bn_var = {}
     forward_model = copy.deepcopy(model)    

@@ -8,7 +8,7 @@ from torchvision import transforms
 from utils.logger import setup_logger
 logger = setup_logger('train')
 
-def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate = 1e-4, head_learning_rate = 1e-5, subnet_sample_interval = 20):
+def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate = 1e-4, head_learning_rate = 1e-3, subnet_sample_interval = 20):
 
     # 设置优化器
     params_backbone = [p for p in model.backbone.parameters() if p.requires_grad]
