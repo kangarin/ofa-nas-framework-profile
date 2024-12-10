@@ -8,7 +8,7 @@ def eval_latency(model, input_size, device, warmup_times = 10, repeat_times = 10
 
     # 如果是cpu，只用一半的repeat_times
     if device == torch.device("cpu"):
-        repeat_times = repeat_times // 10
+        repeat_times = repeat_times // 2
 
     times = []
     

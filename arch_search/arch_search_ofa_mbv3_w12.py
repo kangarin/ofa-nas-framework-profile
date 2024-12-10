@@ -18,7 +18,7 @@ class ArchSearchOFAMbv3W12:
         self.dataset = get_test_dataset()
         self.dataloader = get_dataloader(self.dataset, 4)
         self.calib_dataset = get_calib_dataset(custom_transform=transforms.Compose(common_transform_with_normalization_list))
-        self.calib_dataloader = create_fixed_size_dataloader(self.calib_dataset, 100)
+        self.calib_dataloader = create_fixed_size_dataloader(self.calib_dataset, 10)
 
     def objective(self, trial):
         trial_number = trial.number

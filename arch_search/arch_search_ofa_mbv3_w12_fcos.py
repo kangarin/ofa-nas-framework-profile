@@ -15,7 +15,7 @@ class ArchSearchOFAMbv3W12Fcos:
         self.device = device
         self.resolution_list = resolution_list
         self.calib_dataset = get_calib_dataset(custom_transform=transforms.Compose(common_transform_list))
-        self.calib_dataloader = create_fixed_size_dataloader(self.calib_dataset, 100)
+        self.calib_dataloader = create_fixed_size_dataloader(self.calib_dataset, 10)
 
     def objective(self, trial):
         trial_number = trial.number
