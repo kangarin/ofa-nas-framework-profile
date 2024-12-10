@@ -14,8 +14,8 @@ def train_fcos_mbv3_w12():
     from models.detection.ofa_mbv3_w12_fcos import get_ofa_mbv3_w12_fcos_model, load_pretrained_fcos, set_training_params
     model = get_ofa_mbv3_w12_fcos_model()
     load_pretrained_fcos(model)
-    set_training_params(model, is_backbone_body_need_training=True)
-    train(model, 5, 'ofa_mbv3_w12_fcos.pth', batch_size=1)
+    set_training_params(model, is_backbone_body_need_training=False)
+    train(model, 100, 'ofa_mbv3_w12_fcos.pth', batch_size=2)
     model = torch.load('ofa_mbv3_w12_fcos.pth')
 
 def train_fcos_resnet50():
@@ -45,6 +45,38 @@ def train_fasterrcnn_resnet50():
     train(model, 5, 'ofa_resnet50_fasterrcnn.pth', batch_size=2)
     model = torch.load('ofa_resnet50_fasterrcnn.pth')
 
+def test_classification_api():
+    from models.backbone.ofa_supernet import get_ofa_supernet_mbv3_w12
+    model = get_ofa_supernet_mbv3_w12()
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+    image_path1 = "C:\\Users\\wydai\\Downloads\\111121084738-traffic-jam.jpg"
+    image_path2 = "D:\\Projects\\python\\once-for-all\\00300588922_1f374172.jpg" 
+
+    from inference.classification_inference import ClassificationInference
+    from datasets.imagenet_dataset import get_test_dataset, get_dataloader
+    dataset = get_test_dataset()
+    dataloader = get_dataloader(dataset, 4)
+    infer = ClassificationInference(model, device)
+    from PIL import Image
+    pil_img1 = Image.open(image_path1).convert("RGB")
+    pil_img2 = Image.open(image_path2).convert("RGB")
+    import torchvision.transforms as T
+    transform = T.Compose([
+        T.ToTensor(),
+        T.Normalize(mean=[0.485, 0.456, 0.406], std=[0.229, 0.224, 0.225])
+    ])
+    img1 = transform(pil_img1)
+    img2 = transform(pil_img2)
+    from utils.common import resize_images
+    img = resize_images([img1, img2])
+    result = infer.classify(img)
+    max_score, max_label = torch.max(result, 1)
+    from datasets.imagenet_dataset import get_classes
+    print(get_classes()[max_label[0].item()])
+    print(get_classes()[max_label[1].item()])
+    print(max_score, max_label)   
+
 def test_det_api():
     import torch
     import torchvision.transforms as T
@@ -52,11 +84,11 @@ def test_det_api():
     import numpy as np
     from PIL import Image
 
-    model = torch.load('ofa_mbv3_w12_fcos.pth')
+    model = torch.load('ofa_mbv3_w12_fcos_backbone_finetune_5epoch.pth')
     # model = torch.load('ofa_resnet50_fcos.pth')
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    image_path1 = "D:\Projects\python\smart-dnn-framework\my_experiments\ILSVRC2012_val_00000384.JPEG"
+    image_path1 = "C:\\Users\\wydai\\Downloads\\ladwa-40.png"
     image_path2 = "D:\\Projects\\python\\once-for-all\\00300588922_1f374172.jpg"
 
     from inference.detection_inference import DetectionInference
@@ -65,10 +97,12 @@ def test_det_api():
     for i in range(10):
         subnet_config = model.backbone.body.sample_active_subnet()
         detection_inference.set_active_subnet(**subnet_config)
+        # detection_inference.model.backbone.body.set_max_net()
+        set_running_statistics(detection_inference.model, detection_inference.calib_dataloader, 10)
         print(subnet_config)
 
-        from evaluation.detection_accuracy_eval import eval_accuracy
-        eval_accuracy(model, 640, 100, device)
+        # from evaluation.detection_accuracy_eval import eval_accuracy
+        # eval_accuracy(model, 640, 100, device)
 
         # 保存原始图像用于显示
         pil_img1 = Image.open(image_path1).convert("RGB")
@@ -87,7 +121,7 @@ def test_det_api():
         img = resize_images([img1, img2])
 
         # 推理
-        batch_boxes, batch_labels, batch_scores = detection_inference.detect(img)
+        batch_boxes, batch_labels, batch_scores = detection_inference.detect(img, 0.45)
 
         # 显示原始图像和检测结果
         for orig_img, boxes, labels, scores in zip(original_images, batch_boxes, batch_labels, batch_scores):
@@ -256,7 +290,7 @@ def test_search_mbv3_w12_fcos():
     torch.cuda.set_per_process_memory_fraction(0.25)  # 3070 8GB的25%约等于2GB   
     study = create_study("test_search_mbv3_fcos")
     model = torch.load('ofa_mbv3_w12_fcos.pth')
-    run_study(model, study, 100, 'cuda', [240, 360, 480])
+    run_study(model, study, 200, 'cuda', [480])
 
 def test_pareto_front():
     import optuna
@@ -265,11 +299,12 @@ def test_pareto_front():
         print(t.number, t.values)
 
 if __name__ == '__main__':
-    # train_fcos_mbv3_w12()
+    train_fcos_mbv3_w12()
     # train_fcos_resnet50()
-    train_fasterrcnn_mbv3_w12()
+    # train_fasterrcnn_mbv3_w12()
     # train_fasterrcnn_resnet50()
     # test_calib_bs()
+    # test_classification_api()
     # test_det_api()
     # test_model_api()
     # test_fpn_with_other_det()

@@ -8,7 +8,8 @@ from torchvision import transforms
 from utils.logger import setup_logger
 logger = setup_logger('train')
 
-def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate = 1e-4, head_learning_rate = 1e-3, subnet_sample_interval = 20):
+def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate = 1e-4, head_learning_rate = 1e-3, 
+          subnet_sample_interval = 10, maxnet_sample_interval = 100, learning_rate_decay = 0.95):
 
     # 设置优化器
     params_backbone = [p for p in model.backbone.parameters() if p.requires_grad]
@@ -19,6 +20,7 @@ def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate =
 
     params = [{'params': params_backbone, 'lr': backbone_learning_rate}, {'params': params_head, 'lr': head_learning_rate}]
     optimizer = torch.optim.SGD(params, momentum=0.9, weight_decay=1e-4)
+    scheduler = torch.optim.lr_scheduler.ExponentialLR(optimizer, gamma=learning_rate_decay)
 
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
     logger.info(f"Start training, using device: {device}")
@@ -39,7 +41,7 @@ def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate =
             if not data:  # 如果data为空
                 continue  # 跳过当前迭代，继续下一个迭代
             # coco数据集太大，本地微调只用了一部分，正式训练应该删除
-            if i > 5000:
+            if i > 1000:
                 break        
             images, targets = data
             images = [image.to(device) for image in images]
@@ -56,8 +58,13 @@ def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate =
                     subnet_config = ofa_network.sample_active_subnet()
                     ofa_network.set_active_subnet(**subnet_config)
                     # 这里每次都重新创建data_loader，增加calib的随机性，从而提高泛化能力
-                    calib_dataloader = create_fixed_size_dataloader(calib_dataset, 100)
-                    set_running_statistics(model, calib_dataloader, 100)
+                    calib_dataloader = create_fixed_size_dataloader(calib_dataset, 10)
+                    set_running_statistics(model, calib_dataloader, 10)
+
+                if i % maxnet_sample_interval == 0:
+                    ofa_network.set_max_net()
+                    calib_dataloader = create_fixed_size_dataloader(calib_dataset, 10)
+                    set_running_statistics(model, calib_dataloader, 10)
 
             # 计算损失
             loss_dict = model(images, targets)
@@ -81,6 +88,8 @@ def train(model, num_epochs, save_path, batch_size = 1, backbone_learning_rate =
             i += 1
         
         logger.info(f"Epoch {epoch+1} finished.")
+        scheduler.step()
+        logger.info(f"Learning rate: {optimizer.param_groups[0]['lr']}")
         torch.save(model, save_path)
 
     logger.info("Training complete.")
