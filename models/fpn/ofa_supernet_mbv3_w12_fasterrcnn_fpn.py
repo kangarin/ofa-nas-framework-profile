@@ -9,7 +9,7 @@ class Mbv3W12FasterRcnnFpn(nn.Module):
     def __init__(self, backbone: nn.Module) -> None:
         super().__init__()
         in_channels_list = [48, 96, 136, 192]
-        out_channels = 256
+        out_channels = 128
         extra_blocks = LastLevelMaxPool()
         self.body = backbone
         self.fpn = FeaturePyramidNetwork(

@@ -13,9 +13,19 @@ def train_fcos_mbv3_w12():
     from train.train_detection_networks import train
     from models.detection.ofa_mbv3_w12_fcos import get_ofa_mbv3_w12_fcos_model, load_pretrained_fcos, set_training_params
     model = get_ofa_mbv3_w12_fcos_model()
+    from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
+    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    # load pre-trained weights if exists
+    import os
+    if os.path.exists('ofa_mbv3_w12_fcos.pth'):
+        model = torch.load('ofa_mbv3_w12_fcos.pth')
     load_pretrained_fcos(model)
     set_training_params(model, is_backbone_body_need_training=False)
-    train(model, 100, 'ofa_mbv3_w12_fcos.pth', batch_size=2)
+    train(model, 20, 'ofa_mbv3_w12_fcos.pth', max_net_config, min_net_config,
+          batch_size=4, 
+          backbone_learning_rate=1e-3, head_learning_rate=1e-2,
+          min_backbone_lr=1e-5, min_head_lr=1e-4)
     model = torch.load('ofa_mbv3_w12_fcos.pth')
 
 def train_fcos_resnet50():
@@ -84,7 +94,7 @@ def test_det_api():
     import numpy as np
     from PIL import Image
 
-    model = torch.load('ofa_mbv3_w12_fcos_backbone_finetune_5epoch.pth')
+    model = torch.load('ofa_mbv3_w12_fcos.pth')
     # model = torch.load('ofa_resnet50_fcos.pth')
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
@@ -121,7 +131,7 @@ def test_det_api():
         img = resize_images([img1, img2])
 
         # 推理
-        batch_boxes, batch_labels, batch_scores = detection_inference.detect(img, 0.45)
+        batch_boxes, batch_labels, batch_scores = detection_inference.detect(img, 0.35)
 
         # 显示原始图像和检测结果
         for orig_img, boxes, labels, scores in zip(original_images, batch_boxes, batch_labels, batch_scores):
@@ -290,7 +300,7 @@ def test_search_mbv3_w12_fcos():
     torch.cuda.set_per_process_memory_fraction(0.25)  # 3070 8GB的25%约等于2GB   
     study = create_study("test_search_mbv3_fcos")
     model = torch.load('ofa_mbv3_w12_fcos.pth')
-    run_study(model, study, 200, 'cuda', [480])
+    run_study(model, study, 200, 'cuda', [640])
 
 def test_pareto_front():
     import optuna

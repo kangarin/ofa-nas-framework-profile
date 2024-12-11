@@ -56,3 +56,45 @@ def get_architecture_dict(ofa_supernet_name: str):
                 "choices": [0, 1, 2],
             }
         }
+
+def get_max_net_config(ofa_supernet_name: str):
+    assert ofa_supernet_name in ["ofa_supernet_mbv3_w10", "ofa_supernet_mbv3_w12", "ofa_supernet_resnet50"]
+    if ofa_supernet_name == "ofa_supernet_mbv3_w10":
+        return {
+            "ks": [7] * 20,
+            "e": [6] * 20,
+            "d": [4] * 5
+        }
+    elif ofa_supernet_name == "ofa_supernet_mbv3_w12":
+        return {
+            "ks": [7] * 20,
+            "e": [6] * 20,
+            "d": [4] * 5
+        }
+    elif ofa_supernet_name == "ofa_supernet_resnet50":
+        return {
+            "d": [2] * 5,
+            "e": [0.35] * 18,
+            "w": [2] * 6
+        }
+    
+def get_min_net_config(ofa_supernet_name: str):
+    assert ofa_supernet_name in ["ofa_supernet_mbv3_w10", "ofa_supernet_mbv3_w12", "ofa_supernet_resnet50"]
+    if ofa_supernet_name == "ofa_supernet_mbv3_w10":
+        return {
+            "ks": [3] * 20,
+            "e": [3] * 20,
+            "d": [2] * 5
+        }
+    elif ofa_supernet_name == "ofa_supernet_mbv3_w12":
+        return {
+            "ks": [3] * 20,
+            "e": [3] * 20,
+            "d": [2] * 5
+        }
+    elif ofa_supernet_name == "ofa_supernet_resnet50":
+        return {
+            "d": [0] * 5,
+            "e": [0.2] * 18,
+            "w": [0] * 6
+        }

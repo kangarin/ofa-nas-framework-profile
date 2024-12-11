@@ -9,8 +9,8 @@ class Mbv3W12FcosFpn(nn.Module):
     def __init__(self, backbone: nn.Module) -> None:
         super().__init__()
         in_channels_list = [48, 136, 192]
-        out_channels = 256
-        extra_blocks = LastLevelP6P7(256, 256)
+        out_channels = 128
+        extra_blocks = LastLevelP6P7(128, 128)
         self.body = backbone
         self.fpn = FeaturePyramidNetwork(
             in_channels_list=in_channels_list,
