@@ -7,4 +7,9 @@
 ## MEMO
 1. calib数据集不需要gt，只需要一个图片文件夹即可，测量函数，入参模型不需要train模式，eval即可，bn会在代码里做替换，已实测
 2. 检测不需要resize图像，因为自定义的collate fn里面batch是返回一个列表，但是分类需要统一batch里的图像尺寸
-3. 目标检测不能用normalize，否则用torchvision里的预训练模型eval时发现精度很低，所以现在默认就是不normalize，但是分类需要normalize，要注意calib也需要判断是否normalize，也就是train-calib-infer三个阶段都要考虑统一性
+3. 目标检测不能用normalize，否则用torchvision里的预训练模型eval时发现精度很低，所以现在默认就是不normalize，但是分类需要normalize，要注意calib也需要判断是否normalize，也就是train-calib-infer三个阶段都要考虑统一性（后来看了源码发现应该是detection模块内部自己用了normalize，所以我们不需要加，但是单独的ofa backbone需要）
+
+# Important TODO:
+1. 需要做一个实验，证明采用随机sample策略训练好的supernet中如果随机选择两个子网络1和子网络2，如何子网络1的精度低于子网络2，那么在对每个子网络进行一定epoch的微调以后，以极大的概率子网络1的精度仍然会低于子网络2，这样才能证明在超网络上通过进化算法进行帕累托最优架构搜索后，再对每个子网络进行微调是有意义的！！！说明超网络内的精度是某种置信度很高的指引！！！
+2. 一些代码需要模块化，比如得考虑搜索出帕累托最优之后子网络fpn+head的微调以及权重保存，以及后续切换架构时加载这部分微调权重的代码，还有bn测量
+3. 需要仔细评估backbone、fpn、head各自的推理时延以及精度，针对不同的backbone和head都要进行彻底的profile，选出比较适用的架构，要有比较有区分度的帕累托前沿（前沿上的精度时延需要尽可能分散）
