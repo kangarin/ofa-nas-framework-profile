@@ -22,10 +22,10 @@ def train_fcos_mbv3_w12():
         model = torch.load('ofa_mbv3_w12_fcos.pth')
     load_pretrained_fcos(model)
     set_training_params(model, is_backbone_body_need_training=False)
-    train(model, 20, 'ofa_mbv3_w12_fcos.pth', max_net_config, min_net_config,
+    train(model, 100, 'ofa_mbv3_w12_fcos.pth', max_net_config, min_net_config,
           batch_size=4, 
-          backbone_learning_rate=1e-3, head_learning_rate=1e-2,
-          min_backbone_lr=1e-5, min_head_lr=1e-4)
+          backbone_learning_rate=5e-3, head_learning_rate=1e-2,
+          min_backbone_lr=5e-5, min_head_lr=1e-4)
     model = torch.load('ofa_mbv3_w12_fcos.pth')
 
 def train_fcos_resnet50():
@@ -40,10 +40,13 @@ def train_fcos_resnet50():
 def train_fasterrcnn_mbv3_w12():
     from train.train_detection_networks import train
     from models.detection.ofa_mbv3_w12_fasterrcnn import get_ofa_mbv3_w12_fasterrcnn_model, load_pretrained_fasterrcnn, set_training_params
+    from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
+    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
     model = get_ofa_mbv3_w12_fasterrcnn_model()
     load_pretrained_fasterrcnn(model)
     set_training_params(model, is_backbone_body_need_training=True)
-    train(model, 5, 'ofa_mbv3_w12_fasterrcnn.pth', batch_size=1)
+    train(model, 5, 'ofa_mbv3_w12_fasterrcnn.pth', max_net_config, min_net_config, batch_size=2)
     model = torch.load('ofa_mbv3_w12_fasterrcnn.pth')
 
 def train_fasterrcnn_resnet50():
@@ -94,20 +97,26 @@ def test_det_api():
     import numpy as np
     from PIL import Image
 
-    model = torch.load('ofa_mbv3_w12_fcos.pth')
+    # model = torch.load('ofa_mbv3_w12_fcos.pth')
+    model = torch.load('ofa_mbv3_w12_fcos_subnet.pth')
+    from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
+    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
     # model = torch.load('ofa_resnet50_fcos.pth')
     device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
 
-    image_path1 = "C:\\Users\\wydai\\Downloads\\ladwa-40.png"
-    image_path2 = "D:\\Projects\\python\\once-for-all\\00300588922_1f374172.jpg"
+    # image_path1 = "C:\\Users\\wydai\\Downloads\\ladwa-40.png"
+    image_path1 = "D:\\Projects\\python\\once-for-all\\00300588922_1f374172.jpg"
+    image_path2 = "D:\\Projects\\coco2017\\val2017\\000000142238.jpg"
 
     from inference.detection_inference import DetectionInference
     detection_inference = DetectionInference(model, device)
 
     for i in range(10):
         subnet_config = model.backbone.body.sample_active_subnet()
-        detection_inference.set_active_subnet(**subnet_config)
+        # detection_inference.set_active_subnet(**subnet_config)
         # detection_inference.model.backbone.body.set_max_net()
+        detection_inference.set_active_subnet(**min_net_config)
         set_running_statistics(detection_inference.model, detection_inference.calib_dataloader, 10)
         print(subnet_config)
 
@@ -131,7 +140,7 @@ def test_det_api():
         img = resize_images([img1, img2])
 
         # 推理
-        batch_boxes, batch_labels, batch_scores = detection_inference.detect(img, 0.35)
+        batch_boxes, batch_labels, batch_scores = detection_inference.detect(img, 0.45)
 
         # 显示原始图像和检测结果
         for orig_img, boxes, labels, scores in zip(original_images, batch_boxes, batch_labels, batch_scores):
@@ -308,10 +317,58 @@ def test_pareto_front():
     for t in exp.best_trials:
         print(t.number, t.values)
 
+def test_train_subnet():
+    from train.train_detection_subnet import train_subnet
+    from models.detection.ofa_mbv3_w12_fcos import get_ofa_mbv3_w12_fcos_model, load_pretrained_fcos, set_training_params
+    model = get_ofa_mbv3_w12_fcos_model()
+    import torch
+    import os
+    if os.path.exists('ofa_mbv3_w12_fcos_subnet.pth'):
+        model = torch.load('ofa_mbv3_w12_fcos_subnet.pth')
+        print('Load model from ofa_mbv3_w12_fcos_subnet.pth')
+    load_pretrained_fcos(model)
+    set_training_params(model)
+    from models.backbone.ofa_supernet import get_min_net_config
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    train_subnet(model, subnet_config=min_net_config, num_epochs=20, save_path='ofa_mbv3_w12_fcos_subnet.pth', batch_size=4,
+                backbone_learning_rate=1e-4, 
+                head_learning_rate=1e-3,
+                min_backbone_lr=1e-5, 
+                min_head_lr=1e-4)
+    
+def test_train_subnet2():
+    from train.train_detection_subnet import train_subnet
+    from models.detection.ofa_resnet50_fcos import get_ofa_resnet50_fcos_model, load_pretrained_fcos, set_training_params
+    model = get_ofa_resnet50_fcos_model()
+    import torch
+    import os
+    if os.path.exists('ofa_resnet50_fcos_subnet.pth'):
+        model = torch.load('ofa_resnet50_fcos_subnet.pth')
+        print('Load model from ofa_resnet50_fcos_subnet.pth')
+    load_pretrained_fcos(model)
+    set_training_params(model)
+    from models.backbone.ofa_supernet import get_min_net_config
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_resnet50')
+    train_subnet(model, subnet_config=min_net_config, num_epochs=20, save_path='ofa_resnet50_fcos_subnet.pth', batch_size=4,
+                backbone_learning_rate=1e-3, 
+                head_learning_rate=1e-2,
+                min_backbone_lr=1e-5, 
+                min_head_lr=1e-4)
+        
+def eval_net_acc():
+    from train.train_detection_subnet import train_subnet
+    from models.detection.ofa_mbv3_w12_fcos import get_ofa_mbv3_w12_fcos_model, load_pretrained_fcos, set_training_params
+    model = get_ofa_mbv3_w12_fcos_model()
+    import torch
+    import os
+    if os.path.exists('ofa_mbv3_w12_fcos_subnet.pth'):
+        model = torch.load('ofa_mbv3_w12_fcos_subnet.pth')
+        print('Load model from ofa_mbv3_w12_fcos_subnet.pth')    
+
 if __name__ == '__main__':
-    train_fcos_mbv3_w12()
+    # train_fcos_mbv3_w12()
     # train_fcos_resnet50()
-    # train_fasterrcnn_mbv3_w12()
+    train_fasterrcnn_mbv3_w12()
     # train_fasterrcnn_resnet50()
     # test_calib_bs()
     # test_classification_api()
@@ -324,3 +381,5 @@ if __name__ == '__main__':
     # test_search_mbv3_w12()
     # test_search_mbv3_w12_fcos()
     # test_pareto_front()
+    # test_train_subnet()
+    # test_train_subnet2()

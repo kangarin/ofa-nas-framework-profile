@@ -9,7 +9,7 @@ class Mbv3W12FasterRcnnFpn(nn.Module):
     def __init__(self, backbone: nn.Module) -> None:
         super().__init__()
         in_channels_list = [48, 96, 136, 192]
-        out_channels = 128
+        out_channels = 192
         extra_blocks = LastLevelMaxPool()
         self.body = backbone
         self.fpn = FeaturePyramidNetwork(
@@ -19,7 +19,7 @@ class Mbv3W12FasterRcnnFpn(nn.Module):
         )
         self.out_channels = out_channels
         self.dynamic_convs = nn.ModuleList()
-        for i in range(4):
+        for i in range(len(in_channels_list)):
             self.dynamic_convs.append(DynamicConv2d(in_channels_list[i], in_channels_list[i], kernel_size=1))
 
     def forward(self, x: Tensor) -> Dict[str, Tensor]:

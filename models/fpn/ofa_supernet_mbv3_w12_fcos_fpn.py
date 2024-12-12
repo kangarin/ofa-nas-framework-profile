@@ -1,6 +1,6 @@
 from collections import OrderedDict
 from typing import Dict
-from torchvision.ops.feature_pyramid_network import FeaturePyramidNetwork, LastLevelP6P7
+from torchvision.ops.feature_pyramid_network import FeaturePyramidNetwork, LastLevelP6P7, LastLevelMaxPool
 from torch import nn, Tensor
 
 from models.ops.dynamic_conv2d import DynamicConv2d
@@ -8,9 +8,11 @@ from models.ops.dynamic_conv2d import DynamicConv2d
 class Mbv3W12FcosFpn(nn.Module):
     def __init__(self, backbone: nn.Module) -> None:
         super().__init__()
-        in_channels_list = [48, 136, 192]
-        out_channels = 128
-        extra_blocks = LastLevelP6P7(128, 128)
+        # in_channels_list = [48, 136, 192]
+        in_channels_list = [48, 96, 136, 192]
+        out_channels = 192
+        # extra_blocks = LastLevelP6P7(192, 192)
+        extra_blocks = LastLevelMaxPool()
         self.body = backbone
         self.fpn = FeaturePyramidNetwork(
             in_channels_list=in_channels_list,
@@ -19,7 +21,7 @@ class Mbv3W12FcosFpn(nn.Module):
         )
         self.out_channels = out_channels
         self.dynamic_convs = nn.ModuleList()
-        for i in range(3):
+        for i in range(len(in_channels_list)):
             self.dynamic_convs.append(DynamicConv2d(in_channels_list[i], in_channels_list[i], kernel_size=1))
 
     def forward(self, x: Tensor) -> Dict[str, Tensor]:
@@ -33,7 +35,8 @@ class Mbv3W12FcosFpn(nn.Module):
             for idx in active_idx:
                 x = self.body.blocks[idx](x)
                 if idx == active_idx[-1]:
-                    if stage_id == 0 or stage_id == 2:
+                    # if stage_id == 0 or stage_id == 2:
+                    if stage_id == 0:
                         pass
                     else:
                         mid_features[str(stage_idx)] = self.dynamic_convs[stage_idx](x)
