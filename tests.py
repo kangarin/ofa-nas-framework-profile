@@ -98,7 +98,8 @@ def test_det_api():
     from PIL import Image
 
     # model = torch.load('ofa_mbv3_w12_fcos.pth')
-    model = torch.load('ofa_mbv3_w12_fcos_subnet.pth')
+    # model = torch.load('ofa_mbv3_w12_fcos_subnet.pth')
+    model = torch.load('ofa_mbv3_w12_fasterrcnn.pth')
     from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
     max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
     min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
@@ -114,9 +115,9 @@ def test_det_api():
 
     for i in range(10):
         subnet_config = model.backbone.body.sample_active_subnet()
-        # detection_inference.set_active_subnet(**subnet_config)
+        detection_inference.set_active_subnet(**subnet_config)
         # detection_inference.model.backbone.body.set_max_net()
-        detection_inference.set_active_subnet(**min_net_config)
+        # detection_inference.set_active_subnet(**min_net_config)
         set_running_statistics(detection_inference.model, detection_inference.calib_dataloader, 10)
         print(subnet_config)
 
@@ -140,7 +141,7 @@ def test_det_api():
         img = resize_images([img1, img2])
 
         # 推理
-        batch_boxes, batch_labels, batch_scores = detection_inference.detect(img, 0.45)
+        batch_boxes, batch_labels, batch_scores = detection_inference.detect(img, 0.4)
 
         # 显示原始图像和检测结果
         for orig_img, boxes, labels, scores in zip(original_images, batch_boxes, batch_labels, batch_scores):
@@ -363,12 +364,44 @@ def eval_net_acc():
     import os
     if os.path.exists('ofa_mbv3_w12_fcos_subnet.pth'):
         model = torch.load('ofa_mbv3_w12_fcos_subnet.pth')
-        print('Load model from ofa_mbv3_w12_fcos_subnet.pth')    
+        print('Load model from ofa_mbv3_w12_fcos_subnet.pth')
+
+def subnet_latency_test():
+    from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
+    # from models.detection.ofa_mbv3_w12_fasterrcnn import get_ofa_mbv3_w12_fasterrcnn_model
+    # from models.detection.ofa_mbv3_w12_fcos import get_ofa_mbv3_w12_fcos_model
+    # max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    # min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    # model = get_ofa_mbv3_w12_fasterrcnn_model()
+    # model = get_ofa_mbv3_w12_fcos_model()
+
+    # from models.detection.ofa_resnet50_fasterrcnn import get_ofa_resnet50_fasterrcnn_model
+    from models.detection.ofa_resnet50_fcos import get_ofa_resnet50_fcos_model
+    # model = get_ofa_resnet50_fasterrcnn_model()
+    model = get_ofa_resnet50_fcos_model()
+    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_resnet50')
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_resnet50')
+
+
+    # 分别测试最小配置和最大配置的前向推理时间
+    import torch
+    
+    from evaluation.latency_eval import eval_latency
+    device = torch.device('cuda') if torch.cuda.is_available() else torch.device('cpu')
+
+    model.backbone.body.set_active_subnet(**min_net_config)
+    avg, std = eval_latency(model, 640, device, 10, 100)
+    print(f'Min config: {avg} ± {std}')
+
+    model.backbone.body.set_active_subnet(**max_net_config)
+    avg, std = eval_latency(model, 640, device, 10, 100)
+    print(f'Max config: {avg} ± {std}')
+
 
 if __name__ == '__main__':
     # train_fcos_mbv3_w12()
     # train_fcos_resnet50()
-    train_fasterrcnn_mbv3_w12()
+    # train_fasterrcnn_mbv3_w12()
     # train_fasterrcnn_resnet50()
     # test_calib_bs()
     # test_classification_api()
@@ -383,3 +416,4 @@ if __name__ == '__main__':
     # test_pareto_front()
     # test_train_subnet()
     # test_train_subnet2()
+    subnet_latency_test()
