@@ -1,7 +1,7 @@
 from models.fpn.ofa_supernet_resnet50_fasterrcnn_fpn import Resnet50FasterRcnnFpn
 from models.backbone.ofa_supernet import get_ofa_supernet_resnet50
 from torchvision.models.detection import FasterRCNN
-
+from models.backbone.backbone_cleanup import cleanup_backbone
 from utils.logger import setup_logger
 logger = setup_logger('model')
 
@@ -9,7 +9,9 @@ def get_ofa_resnet50_fasterrcnn_model(num_classes = 91):
     '''
     这里backbone权重是预训练的supernet，其他层权重未训练
     '''
-    model = FasterRCNN(Resnet50FasterRcnnFpn(get_ofa_supernet_resnet50()), num_classes)
+    backbone = get_ofa_supernet_resnet50()
+    backbone = cleanup_backbone(backbone)
+    model = FasterRCNN(Resnet50FasterRcnnFpn(backbone), num_classes)
     return model
 
 def load_pretrained_fasterrcnn(model):
@@ -45,6 +47,9 @@ def set_training_params(model, is_backbone_body_need_training = False,
 
     for param in model.backbone.fpn.parameters():
         param.requires_grad = is_backbone_fpn_need_training
+
+    for param in model.rpn.parameters():
+        param.requires_grad = is_head_need_training
 
     for param in model.roi_heads.parameters():
         param.requires_grad = is_head_need_training

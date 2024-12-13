@@ -1,6 +1,7 @@
 from models.fpn.ofa_supernet_mbv3_w12_fcos_fpn import Mbv3W12FcosFpn
 from models.backbone.ofa_supernet import get_ofa_supernet_mbv3_w12
 from torchvision.models.detection import FCOS
+from models.backbone.backbone_cleanup import cleanup_backbone
 
 from utils.logger import setup_logger
 logger = setup_logger('model')
@@ -9,7 +10,9 @@ def get_ofa_mbv3_w12_fcos_model(num_classes = 91):
     '''
     这里backbone权重是预训练的supernet，其他层权重未训练
     '''
-    model = FCOS(Mbv3W12FcosFpn(get_ofa_supernet_mbv3_w12()), num_classes)
+    backbone = get_ofa_supernet_mbv3_w12()
+    backbone = cleanup_backbone(backbone)
+    model = FCOS(Mbv3W12FcosFpn(backbone), num_classes)
     return model
 
 def load_pretrained_fcos(model):

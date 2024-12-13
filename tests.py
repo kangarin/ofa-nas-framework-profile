@@ -45,7 +45,7 @@ def train_fasterrcnn_mbv3_w12():
     min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
     model = get_ofa_mbv3_w12_fasterrcnn_model()
     load_pretrained_fasterrcnn(model)
-    set_training_params(model, is_backbone_body_need_training=True)
+    set_training_params(model, is_backbone_body_need_training=False)
     train(model, 5, 'ofa_mbv3_w12_fasterrcnn.pth', max_net_config, min_net_config, batch_size=2)
     model = torch.load('ofa_mbv3_w12_fasterrcnn.pth')
 
