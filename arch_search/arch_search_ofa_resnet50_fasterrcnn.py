@@ -1,23 +1,20 @@
 import optuna
 from models.backbone.ofa_supernet import get_architecture_dict
 from optuna.samplers import NSGAIIISampler
-from evaluation.classification_accuracy_eval import eval_accuracy
+from evaluation.detection_accuracy_eval import eval_accuracy
 from evaluation.latency_eval import eval_latency
-from datasets.imagenet_dataset import get_dataloader, get_test_dataset
 from datasets.calib_dataset import get_calib_dataset, create_fixed_size_dataloader
-from datasets.common_transform import common_transform_with_normalization_list
+from datasets.common_transform import common_transform_list
 from torchvision import transforms
 from utils.bn_calibration import set_running_statistics
 import torch
 
-class ArchSearchOFAResnet50:
+class ArchSearchOFAResnet50FasterRcnn:
     def __init__(self, model, device, resolution_list):
         self.model = model
         self.device = device
         self.resolution_list = resolution_list
-        self.dataset = get_test_dataset()
-        self.dataloader = get_dataloader(self.dataset, 4)
-        self.calib_dataset = get_calib_dataset(custom_transform=transforms.Compose(common_transform_with_normalization_list))
+        self.calib_dataset = get_calib_dataset(custom_transform=transforms.Compose(common_transform_list))
         self.calib_dataloader = create_fixed_size_dataloader(self.calib_dataset, 10)
 
     def objective(self, trial):
@@ -49,21 +46,21 @@ class ArchSearchOFAResnet50:
         r_mapped = r_values[r]
         print("Arch: ", config, "resolution: ", r_mapped)
 
-        objective1 = get_accuracy(self.model, config, r_mapped, self.dataloader, self.calib_dataloader, self.device)
+        objective1 = get_accuracy(self.model, config, r_mapped, self.calib_dataloader, self.device)
         objective2 = get_latency(self.model, config, r_mapped, self.device)
 
         return objective1, objective2
     
-def get_accuracy(model, config, img_size, eval_dataloader, calib_dataloader, device):
-    model.set_active_subnet(**config)
+def get_accuracy(model, config, img_size, calib_dataloader, device):
+    model.backbone.body.set_active_subnet(**config)
     set_running_statistics(model, calib_dataloader)
     # 对于精度，可以用gpu加速
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    result = eval_accuracy(model, img_size, eval_dataloader, 500, device, topk=(1, 5), show_progress=True)
-    return result[1]
+    result = eval_accuracy(model, img_size, 100, device, show_progress=True)
+    return result['AP@0.5:0.95']
 
 def get_latency(model, config, img_size, device):
-    model.set_active_subnet(**config)
+    model.backbone.body.set_active_subnet(**config)
     result = eval_latency(model, img_size, device)
     return result[0]
     
@@ -77,7 +74,7 @@ def create_study(study_name):
     return study
 
 def run_study(model, study, n_trials, device, resolution_list):
-    arch_searcher = ArchSearchOFAResnet50(model, device, resolution_list)
+    arch_searcher = ArchSearchOFAResnet50FasterRcnn(model, device, resolution_list)
     objective = arch_searcher.objective
     study.optimize(objective, n_trials=n_trials)
 
