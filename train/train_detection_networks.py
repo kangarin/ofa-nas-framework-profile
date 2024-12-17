@@ -6,6 +6,7 @@ import torch
 from datasets.common_transform import common_transform_list
 from torchvision import transforms
 from utils.logger import setup_logger
+from evaluation.detection_accuracy_eval import eval_accuracy
 logger = setup_logger('train')
 
 def train(model, num_epochs, save_path, max_net_config, min_net_config,
@@ -103,7 +104,7 @@ def train(model, num_epochs, save_path, max_net_config, min_net_config,
             ofa_network = model.backbone.body
             
             # 第一轮使用最大网络
-            if epoch == -1:
+            if epoch == 0:
                 ofa_network.set_max_net()
             else:
                 # 每subnet_sample_interval次迭代切换一次网络配置
@@ -154,6 +155,26 @@ def train(model, num_epochs, save_path, max_net_config, min_net_config,
         scheduler_head.step()
         logger.info(f"Current learning rates - backbone: {scheduler_backbone.get_last_lr()}, head: {scheduler_head.get_last_lr()}")
         
+        # 分别测量最大、最小和某个随机网络的精度
+        ofa_network.set_active_subnet(**max_net_config)
+        calib_dataloader = create_fixed_size_dataloader(calib_dataset, 10)
+        set_running_statistics(model, calib_dataloader, 10)
+        max_acc = eval_accuracy(model, None, 100, device, show_progress=False)['AP@0.5:0.95']
+        logger.info(f"Max network accuracy: {max_acc}")
+
+        ofa_network.set_active_subnet(**min_net_config)
+        calib_dataloader = create_fixed_size_dataloader(calib_dataset, 10)
+        set_running_statistics(model, calib_dataloader, 10)
+        min_acc = eval_accuracy(model, None, 100, device, show_progress=False)['AP@0.5:0.95']
+        logger.info(f"Min network accuracy: {min_acc}")
+
+        subnet_config = ofa_network.sample_active_subnet()
+        ofa_network.set_active_subnet(**subnet_config)
+        calib_dataloader = create_fixed_size_dataloader(calib_dataset, 10)
+        set_running_statistics(model, calib_dataloader, 10)
+        random_acc = eval_accuracy(model, None, 100, device, show_progress=False)['AP@0.5:0.95']
+        logger.info(f"Random network config: {subnet_config}, accuracy: {random_acc}")
+
         # 保存模型
         torch.save(model, save_path)
 
