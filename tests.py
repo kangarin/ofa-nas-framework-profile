@@ -58,7 +58,10 @@ def train_fasterrcnn_resnet50():
     model = get_ofa_resnet50_fasterrcnn_model()
     load_pretrained_fasterrcnn(model)
     set_training_params(model)
-    train(model, 5, 'ofa_resnet50_fasterrcnn.pth', max_net_config, min_net_config, batch_size=2)
+    import os
+    if os.path.exists('ofa_resnet50_fasterrcnn.pth'):
+        model = torch.load('ofa_resnet50_fasterrcnn.pth')
+    train(model, 10, 'ofa_resnet50_fasterrcnn.pth', max_net_config, min_net_config, batch_size=2)
     model = torch.load('ofa_resnet50_fasterrcnn.pth')
 
 def test_classification_api():
@@ -147,7 +150,7 @@ def test_det_api():
         img = resize_images([img1, img2])
 
         # 推理
-        batch_boxes, batch_labels, batch_scores = detection_inference.detect(img, 0.4)
+        batch_boxes, batch_labels, batch_scores = detection_inference.detect(img, 0.5)
 
         # 显示原始图像和检测结果
         for orig_img, boxes, labels, scores in zip(original_images, batch_boxes, batch_labels, batch_scores):
@@ -422,7 +425,7 @@ if __name__ == '__main__':
     # train_fasterrcnn_resnet50()
     # test_calib_bs()
     # test_classification_api()
-    # test_det_api()
+    test_det_api()
     # test_model_api()
     # test_fpn_with_other_det()
     # some_test3()
@@ -431,7 +434,7 @@ if __name__ == '__main__':
     # test_search_res50_faster_rcnn()
     # test_search_mbv3_w12()
     # test_search_mbv3_w12_fcos()
-    test_pareto_front()
+    # test_pareto_front()
     # test_train_subnet()
     # test_train_subnet2()
     # subnet_latency_test()
