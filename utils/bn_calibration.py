@@ -77,3 +77,43 @@ def set_running_statistics(model, image_loader, max_iters=10):
             assert isinstance(m, nn.BatchNorm2d)
             m.running_mean.data[:feature_dim].copy_(bn_mean[name].avg)
             m.running_var.data[:feature_dim].copy_(bn_var[name].avg)
+
+def save_bn_statistics(model, save_path):
+    """
+    保存模型中所有BN层的running_mean和running_var到文件
+    
+    Args:
+        model: 神经网络模型
+        save_path: 保存统计数据的文件路径(.pth)
+    """
+    bn_stats = {}
+    for name, m in model.named_modules():
+        if isinstance(m, (nn.BatchNorm2d, DynamicBatchNorm2d)):
+            bn_stats[name] = {
+                'running_mean': m.running_mean.data.cpu().numpy(),
+                'running_var': m.running_var.data.cpu().numpy()
+            }
+    
+    torch.save(bn_stats, save_path)
+    print(f"BN statistics saved to {save_path}")
+
+def load_bn_statistics(model, stats_path):
+    """
+    从文件加载BN统计数据并应用到模型
+    
+    Args:
+        model: 神经网络模型
+        stats_path: 包含BN统计数据的文件路径(.pth)
+    """
+    bn_stats = torch.load(stats_path)
+    
+    for name, m in model.named_modules():
+        if name in bn_stats and isinstance(m, (nn.BatchNorm2d, DynamicBatchNorm2d)):
+            stats = bn_stats[name]
+            feature_dim = stats['running_mean'].shape[0]
+            
+            # 将统计数据加载到模型中
+            m.running_mean.data[:feature_dim].copy_(torch.from_numpy(stats['running_mean']).to(m.running_mean.device))
+            m.running_var.data[:feature_dim].copy_(torch.from_numpy(stats['running_var']).to(m.running_var.device))
+    
+    print(f"BN statistics loaded from {stats_path}")
