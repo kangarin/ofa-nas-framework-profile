@@ -296,7 +296,7 @@ def some_test3():
 
 def test_search_res50_faster_rcnn():
     from arch_search.arch_search_ofa_detection import create_study, run_study
-    study = create_study("test_search_resnet50_faster_rcnn111")
+    study = create_study("test_search_resnet50_faster_rcnn_custom")
     model = torch.load('ofa_resnet50_fasterrcnn.pth')
     run_study(model, study, 500, 'cuda', [640],'ofa_supernet_resnet50')
 
@@ -317,7 +317,7 @@ def test_pareto_front():
     import optuna
     # exp = optuna.load_study(study_name="test_search_resnet50", storage="sqlite:///test_search_resnet50.db")
     # exp = optuna.load_study(study_name="test_search_resnet50_faster_rcnn", storage="sqlite:///test_search_resnet50_faster_rcnn.db")
-    exp = optuna.load_study(study_name="test_search_mbv3_fasterrcnn", storage="sqlite:///test_search_mbv3_fasterrcnn.db")
+    exp = optuna.load_study(study_name="test_search_resnet50_faster_rcnn_custom", storage="sqlite:///test_search_resnet50_faster_rcnn_custom.db")
     # plot
     from optuna.visualization import plot_pareto_front
     fig = optuna.visualization.plot_pareto_front(exp)
@@ -375,20 +375,16 @@ def eval_net_acc():
 
 def subnet_latency_test():
     from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
-    from models.detection.ofa_mbv3_w12_fasterrcnn import get_ofa_mbv3_w12_fasterrcnn_model
+    # from models.detection.ofa_mbv3_w12_fasterrcnn import 
+    from models.detection.ofa_resnet50_fasterrcnn import get_ofa_resnet50_fasterrcnn_model
     # from models.detection.ofa_mbv3_w12_fcos import get_ofa_mbv3_w12_fcos_model
-    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
-    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
-    model = get_ofa_mbv3_w12_fasterrcnn_model()
+    # max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    # min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_resnet50')
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_resnet50')
+    # # model = get_ofa_mbv3_w12_fasterrcnn_model()
+    model = get_ofa_resnet50_fasterrcnn_model()
     # model = get_ofa_mbv3_w12_fcos_model()
-
-    # from models.detection.ofa_resnet50_fasterrcnn import get_ofa_resnet50_fasterrcnn_model
-    # from models.detection.ofa_resnet50_fcos import get_ofa_resnet50_fcos_model
-    # model = get_ofa_resnet50_fasterrcnn_model()
-    # model = get_ofa_resnet50_fcos_model()
-    # max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_resnet50')
-    # min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_resnet50')
-
 
     # 分别测试最小配置和最大配置的前向推理时间
     import torch
@@ -416,6 +412,62 @@ def test_best_arch_configs():
     model.set_active_subnet(**one_config)
     print(one_config)
 
+def test_best_arch_configs2():
+    from arch_switch.arch_switch_ofa_backbone import get_best_arch_configs
+    import optuna
+    study = optuna.load_study(study_name="test_search_resnet50_faster_rcnn", storage="sqlite:///test_search_resnet50_faster_rcnn.db")
+    configs = get_best_arch_configs(study, 'ofa_supernet_resnet50')
+    print(configs)
+
+    # 从摄像头读取图像，进行实时检测，十秒钟切换一次架构（从configs里随机选，标在屏幕上）
+    from inference.detection_inference import DetectionInference
+    from models.detection.ofa_resnet50_fasterrcnn import get_ofa_resnet50_fasterrcnn_model
+    model = get_ofa_resnet50_fasterrcnn_model()
+    model = torch.load('ofa_resnet50_fasterrcnn.pth')
+    
+    import cv2
+    from PIL import Image
+    import numpy as np
+    from utils.common import resize_images
+    from torchvision.transforms import ToTensor
+    from torchvision.transforms import functional as F
+    from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
+    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_resnet50')
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_resnet50')
+    detection_inference = DetectionInference(model, 'cuda')
+    cap = cv2.VideoCapture(0)
+
+    import time
+    last_time = time.time()
+    while True:
+        ret, frame = cap.read()
+        if not ret:
+            break
+        frame = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
+        pil_img = Image.fromarray(frame)
+        transform = ToTensor()
+        img = transform(pil_img)
+        img = resize_images([img])[0]
+        img = img.unsqueeze(0)
+        img = img.to('cuda')
+        # 每十秒切换一次架构
+        if time.time() - last_time > 10:
+            last_time = time.time()
+            one_config = configs[np.random.randint(len(configs))]['config']
+            detection_inference.set_active_subnet(**one_config)
+            print(one_config)
+        boxes, labels, scores = detection_inference.detect(img, 0.3)
+        frame = F.to_pil_image(frame)
+        frame = np.array(frame)
+        for box, label, score in zip(boxes[0], labels[0], scores[0]):
+            x_min, y_min, x_max, y_max = box
+            x_min, y_min, x_max, y_max = int(x_min), int(y_min), int(x_max), int(y_max)
+            cv2.rectangle(frame, (x_min, y_min), (x_max, y_max), (255, 0, 0), 2)
+        frame = cv2.cvtColor(frame, cv2.COLOR_RGB2BGR)
+        cv2.imshow('frame', frame)
+        if cv2.waitKey(1) & 0xFF == ord('q'):
+            break
+
 if __name__ == '__main__':
     # train_fcos_mbv3_w12()
     # train_fcos_resnet50()
@@ -430,8 +482,9 @@ if __name__ == '__main__':
     # test_search_res50_faster_rcnn()
     # test_search_mbv3_w12()
     # test_search_mbv3_w12_faster_rcnn()
-    # test_pareto_front()
+    test_pareto_front()
     # test_train_subnet()
     # test_train_subnet2()
     # subnet_latency_test()
-    test_best_arch_configs()
+    # test_best_arch_configs()
+    # test_best_arch_configs2()

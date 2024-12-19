@@ -7,6 +7,7 @@ from datasets.calib_dataset import get_calib_dataset, create_fixed_size_dataload
 from datasets.common_transform import common_transform_with_normalization_list
 from torchvision import transforms
 from utils.bn_calibration import set_running_statistics
+from arch_search.custom_sampler import CustomNSGAIISampler
 import torch
 
 class ArchSearchOFADetection:
@@ -74,7 +75,8 @@ def create_study(study_name):
                                 storage=storage_name, 
                                 directions=["maximize", "minimize"],
                                 load_if_exists=True,
-                                sampler=NSGAIISampler())
+                                # sampler=NSGAIISampler())
+                                sampler=CustomNSGAIISampler())
     return study
 
 def run_study(model, study, n_trials, device, resolution_list, backbone_name):

@@ -9,6 +9,7 @@ from datasets.common_transform import common_transform_with_normalization_list
 from torchvision import transforms
 from utils.bn_calibration import set_running_statistics
 import torch
+from arch_search.custom_sampler import CustomNSGAIISampler
 
 class ArchSearchOFABackbone:
     # backbone_name: 'ofa_supernet_resnet50' or 'ofa_supernet_mbv3_w12' or 'ofa_supernet_mbv3_w10'
@@ -75,7 +76,8 @@ def create_study(study_name):
                                 storage=storage_name, 
                                 directions=["maximize", "minimize"],
                                 load_if_exists=True,
-                                sampler=NSGAIISampler())
+                                # sampler=NSGAIISampler())
+                                sampler=CustomNSGAIISampler())
     return study
 
 def run_study(model, study, n_trials, device, resolution_list, backbone_name):
