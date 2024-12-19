@@ -404,6 +404,17 @@ def subnet_latency_test():
     avg, std = eval_latency(model, 640, device, 10, 100)
     print(f'Max config: {avg} ± {std}')
 
+def test_best_arch_configs():
+    from arch_switch.arch_switch_ofa_backbone import get_best_arch_configs
+    import optuna
+    study = optuna.load_study(study_name="test_search_mbv3_w12", storage="sqlite:///test_search_mbv3_w12.db")
+    configs = get_best_arch_configs(study, 'ofa_supernet_mbv3_w12')
+    print(configs)
+    one_config = configs[0]['config']
+    from models.backbone.ofa_supernet import get_ofa_supernet_mbv3_w12
+    model = get_ofa_supernet_mbv3_w12()
+    model.set_active_subnet(**one_config)
+    print(one_config)
 
 if __name__ == '__main__':
     # train_fcos_mbv3_w12()
@@ -412,7 +423,7 @@ if __name__ == '__main__':
     # train_fasterrcnn_resnet50()
     # test_calib_bs()
     # test_classification_api()
-    test_det_api()
+    # test_det_api()
     # test_model_api()
     # test_fpn_with_other_det()
     # some_test3()
@@ -423,3 +434,4 @@ if __name__ == '__main__':
     # test_train_subnet()
     # test_train_subnet2()
     # subnet_latency_test()
+    test_best_arch_configs()
