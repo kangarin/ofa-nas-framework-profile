@@ -13,7 +13,7 @@ from arch_search.custom_sampler import CustomNSGAIISampler
 
 class ArchSearchOFABackbone:
     # backbone_name: 'ofa_supernet_resnet50' or 'ofa_supernet_mbv3_w12' or 'ofa_supernet_mbv3_w10'
-    def __init__(self, model, device, resolution_list, backbone_name):
+    def __init__(self, model, device, resolution_list, backbone_name, n_trials):
         self.model = model
         self.device = device
         self.resolution_list = resolution_list
@@ -22,6 +22,7 @@ class ArchSearchOFABackbone:
         self.calib_dataset = get_calib_dataset(custom_transform=transforms.Compose(common_transform_with_normalization_list))
         self.calib_dataloader = create_fixed_size_dataloader(self.calib_dataset, 10)
         self.backbone_name = backbone_name
+        self.n_trials = n_trials
 
     def objective(self, trial):
         trial_number = trial.number
@@ -52,22 +53,26 @@ class ArchSearchOFABackbone:
         r_mapped = r_values[r]
         print("Arch: ", config, "resolution: ", r_mapped)
 
-        objective1 = get_accuracy(self.model, config, r_mapped, self.dataloader, self.calib_dataloader, self.device)
+        min_image_num = 20
+        max_image_num = 200
+        image_num = min_image_num + (max_image_num - min_image_num) * trial_number // self.n_trials
+
+        objective1 = get_accuracy(image_num, self.model, config, r_mapped, self.dataloader, self.calib_dataloader, self.device)
         objective2 = get_latency(self.model, config, r_mapped, self.device)
 
         return objective1, objective2
     
-def get_accuracy(model, config, img_size, eval_dataloader, calib_dataloader, device):
+def get_accuracy(image_num, model, config, img_size, eval_dataloader, calib_dataloader, device):
     model.set_active_subnet(**config)
     set_running_statistics(model, calib_dataloader)
     # 对于精度，可以用gpu加速
     device = torch.device("cuda") if torch.cuda.is_available() else torch.device("cpu")
-    result = eval_accuracy(model, img_size, eval_dataloader, 100, device, topk=(1, 5), show_progress=True)
+    result = eval_accuracy(model, img_size, eval_dataloader, image_num, device, topk=(1, 5), show_progress=True)
     return result[1]
 
 def get_latency(model, config, img_size, device):
     model.set_active_subnet(**config)
-    result = eval_latency(model, img_size, device)
+    result = eval_latency(model, img_size, device, warmup_times=10, repeat_times=50)
     return result[0]
     
 def create_study(study_name):
@@ -81,7 +86,7 @@ def create_study(study_name):
     return study
 
 def run_study(model, study, n_trials, device, resolution_list, backbone_name):
-    arch_searcher = ArchSearchOFABackbone(model, device, resolution_list, backbone_name)
+    arch_searcher = ArchSearchOFABackbone(model, device, resolution_list, backbone_name, n_trials)
     objective = arch_searcher.objective
     study.optimize(objective, n_trials=n_trials)
 

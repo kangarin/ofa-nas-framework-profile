@@ -19,9 +19,11 @@ class Resnet50FasterRcnnFpn(nn.Module):
             extra_blocks=extra_blocks
         )
         self.out_channels = out_channels
+        self.bns = nn.ModuleList()
         self.dynamic_convs = nn.ModuleList()
         for i in range(4):
             self.dynamic_convs.append(DynamicConv2d(in_channels_list[i], in_channels_list[i], kernel_size=1))
+            self.bns.append(nn.BatchNorm2d(in_channels_list[i]))
 
     def forward(self, x: Tensor) -> Dict[str, Tensor]:
         for layer in self.body.input_stem:
@@ -34,6 +36,9 @@ class Resnet50FasterRcnnFpn(nn.Module):
             for idx in active_idx:
                 x = self.body.blocks[idx](x)
                 if idx == active_idx[-1]:
-                    mid_features[str(stage_id)] = self.dynamic_convs[stage_id](x)                
+                    # mid_features[str(stage_id)] = self.dynamic_convs[stage_id](x)   
+                    feat = self.dynamic_convs[stage_id](x)
+                    feat = self.bns[stage_id](feat)
+                    mid_features[str(stage_id)] = feat             
         x = self.fpn(mid_features)
         return x

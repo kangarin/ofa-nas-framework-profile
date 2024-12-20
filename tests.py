@@ -38,7 +38,8 @@ def train_fcos_resnet50():
     model = torch.load('ofa_resnet50_fcos.pth')    
 
 def train_fasterrcnn_mbv3_w12():
-    from train.train_detection_networks import train
+    # from train.train_detection_networks import train
+    from train.train_detection_networks_with_kd import train
     from models.detection.ofa_mbv3_w12_fasterrcnn import get_ofa_mbv3_w12_fasterrcnn_model, load_pretrained_fasterrcnn, set_training_params
     from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
     max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
@@ -46,8 +47,11 @@ def train_fasterrcnn_mbv3_w12():
     model = get_ofa_mbv3_w12_fasterrcnn_model()
     load_pretrained_fasterrcnn(model)
     set_training_params(model, is_backbone_body_need_training=False)
-    train(model, 10, 'ofa_mbv3_w12_fasterrcnn.pth', max_net_config, min_net_config, batch_size=2)
-    model = torch.load('ofa_mbv3_w12_fasterrcnn.pth')
+    import os
+    # if os.path.exists('ofa_mbv3_w12_fasterrcnn_adam.pth'):
+    #     model = torch.load('ofa_mbv3_w12_fasterrcnn_adam.pth')
+    train(model, 10, 'ofa_mbv3_w12_fasterrcnn_kd.pth', max_net_config, min_net_config, batch_size=2)
+    model = torch.load('ofa_mbv3_w12_fasterrcnn_kd.pth')
 
 def train_fasterrcnn_resnet50():
     from train.train_detection_networks import train
@@ -197,11 +201,18 @@ def test_calib_bs():
     set_running_statistics(model, calib_dataloader)
 
 def test_fpn_with_other_det():
-    from models.fpn.ofa_supernet_mbv3_w12_fcos_fpn import Mbv3W12FcosFpn
-    from models.backbone.ofa_supernet import get_ofa_supernet_mbv3_w12
-    fpn = Mbv3W12FcosFpn(get_ofa_supernet_mbv3_w12())
-    from torchvision.models.detection import FasterRCNN
-    model = FasterRCNN(backbone = fpn, num_classes = 91)
+    # from models.detection.ofa_mbv3_w12_fasterrcnn import get_ofa_mbv3_w12_fasterrcnn_model
+    # model = get_ofa_mbv3_w12_fasterrcnn_model()
+
+    # from models.detection.ofa_resnet50_fcos import get_ofa_resnet50_fcos_model
+    # model = get_ofa_resnet50_fcos_model()
+
+    # from models.detection.ofa_resnet50_fasterrcnn import get_ofa_resnet50_fasterrcnn_model
+    # model = get_ofa_resnet50_fasterrcnn_model()
+
+    from models.detection.ofa_mbv3_w12_fcos import get_ofa_mbv3_w12_fcos_model
+    model = get_ofa_mbv3_w12_fcos_model()
+
     print(model)
     import torch
     # test forward and backward
@@ -305,11 +316,11 @@ def test_search_mbv3_w12():
     from arch_search.arch_search_ofa_backbone import create_study, run_study
     study = create_study("test_search_mbv3_w12")
     model = get_ofa_supernet_mbv3_w12()
-    run_study(model, study, 200, 'cuda', [480],'ofa_supernet_mbv3_w12')
+    run_study(model, study, 5000, 'cuda', [640],'ofa_supernet_mbv3_w12')
 
 def test_search_mbv3_w12_faster_rcnn():
     from arch_search.arch_search_ofa_detection import create_study, run_study
-    study = create_study("test_search_mbv3_fasterrcnn111")
+    study = create_study("test_search_mbv3_fasterrcnn")
     model = torch.load('ofa_mbv3_w12_fasterrcnn.pth')
     run_study(model, study, 5000, 'cuda', [640],'ofa_supernet_mbv3_w12')
 
@@ -317,7 +328,7 @@ def test_pareto_front():
     import optuna
     # exp = optuna.load_study(study_name="test_search_resnet50", storage="sqlite:///test_search_resnet50.db")
     # exp = optuna.load_study(study_name="test_search_resnet50_faster_rcnn", storage="sqlite:///test_search_resnet50_faster_rcnn.db")
-    exp = optuna.load_study(study_name="test_search_resnet50_faster_rcnn_custom", storage="sqlite:///test_search_resnet50_faster_rcnn_custom.db")
+    exp = optuna.load_study(study_name="test_search_mbv3_w12", storage="sqlite:///test_search_mbv3_w12.db")
     # plot
     from optuna.visualization import plot_pareto_front
     fig = optuna.visualization.plot_pareto_front(exp)
@@ -375,16 +386,17 @@ def eval_net_acc():
 
 def subnet_latency_test():
     from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
-    # from models.detection.ofa_mbv3_w12_fasterrcnn import 
-    from models.detection.ofa_resnet50_fasterrcnn import get_ofa_resnet50_fasterrcnn_model
-    # from models.detection.ofa_mbv3_w12_fcos import get_ofa_mbv3_w12_fcos_model
-    # max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
-    # min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
-    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_resnet50')
-    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_resnet50')
+    from models.detection.ofa_mbv3_w12_fasterrcnn import get_ofa_mbv3_w12_fasterrcnn_model
+    # from models.detection.ofa_resnet50_fasterrcnn import get_ofa_resnet50_fasterrcnn_model
+    from models.detection.ofa_mbv3_w12_fcos import get_ofa_mbv3_w12_fcos_model
+    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    # max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_resnet50')
+    # min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_resnet50')
     # # model = get_ofa_mbv3_w12_fasterrcnn_model()
-    model = get_ofa_resnet50_fasterrcnn_model()
+    # model = get_ofa_resnet50_fasterrcnn_model()
     # model = get_ofa_mbv3_w12_fcos_model()
+    model = get_ofa_mbv3_w12_fasterrcnn_model()
 
     # 分别测试最小配置和最大配置的前向推理时间
     import torch
@@ -471,7 +483,7 @@ def test_best_arch_configs2():
 if __name__ == '__main__':
     # train_fcos_mbv3_w12()
     # train_fcos_resnet50()
-    # train_fasterrcnn_mbv3_w12()
+    train_fasterrcnn_mbv3_w12()
     # train_fasterrcnn_resnet50()
     # test_calib_bs()
     # test_classification_api()
@@ -482,7 +494,7 @@ if __name__ == '__main__':
     # test_search_res50_faster_rcnn()
     # test_search_mbv3_w12()
     # test_search_mbv3_w12_faster_rcnn()
-    test_pareto_front()
+    # test_pareto_front()
     # test_train_subnet()
     # test_train_subnet2()
     # subnet_latency_test()

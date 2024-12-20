@@ -20,9 +20,15 @@ class Mbv3W12FcosFpn(nn.Module):
             extra_blocks=extra_blocks
         )
         self.out_channels = out_channels
+
+        # 添加bn层
         self.dynamic_convs = nn.ModuleList()
+        self.bns = nn.ModuleList()
         for i in range(len(in_channels_list)):
-            self.dynamic_convs.append(DynamicConv2d(in_channels_list[i], in_channels_list[i], kernel_size=1))
+            self.dynamic_convs.append(
+                DynamicConv2d(in_channels_list[i], in_channels_list[i], kernel_size=1)
+            )
+            self.bns.append(nn.BatchNorm2d(in_channels_list[i]))
 
     def forward(self, x: Tensor) -> Dict[str, Tensor]:
         mid_features = OrderedDict()
@@ -39,7 +45,9 @@ class Mbv3W12FcosFpn(nn.Module):
                     if stage_id == 0:
                         pass
                     else:
-                        mid_features[str(stage_idx)] = self.dynamic_convs[stage_idx](x)
+                        feat = self.dynamic_convs[stage_idx](x)
+                        feat = self.bns[stage_idx](feat)
+                        mid_features[str(stage_idx)] = feat
                         stage_idx += 1
         x = self.fpn(mid_features)
         return x

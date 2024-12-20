@@ -49,8 +49,12 @@ class ArchSearchOFADetection:
         r_values = self.resolution_list
         r_mapped = r_values[r]
         print("Arch: ", config, "resolution: ", r_mapped)
-        # TODO: 根据trial_num增加逐渐增大eval的样本数
-        image_num = 50
+
+        # 根据trial_num增加逐渐增大eval的样本数
+        min_image_num = 20
+        max_image_num = 100
+        image_num = min_image_num + (max_image_num - min_image_num) * trial_number // self.n_trials
+
         objective1 = get_accuracy(image_num, self.model, config, r_mapped, self.calib_dataloader, self.device)
         objective2 = get_latency(self.model, config, r_mapped, self.device)
 
