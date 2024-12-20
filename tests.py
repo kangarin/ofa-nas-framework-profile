@@ -480,10 +480,34 @@ def test_best_arch_configs2():
         if cv2.waitKey(1) & 0xFF == ord('q'):
             break
 
+def test_train_some_subnets():
+    from train.train_detection_subnets import train_selected_subnets
+    from models.detection.ofa_mbv3_w12_fasterrcnn import get_ofa_mbv3_w12_fasterrcnn_model
+    model = get_ofa_mbv3_w12_fasterrcnn_model()
+    import os
+    if os.path.exists('ofa_mbv3_w12_fasterrcnn.pth'):
+        model = torch.load('ofa_mbv3_w12_fasterrcnn.pth')
+    from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
+    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    train_selected_subnets(model, [max_net_config, min_net_config], 10, 'ofa_mbv3_w12_fasterrcnn_2subnet.pth', batch_size=2)
+
+def test_train_subnets_with_kd():
+    from train.train_detection_subnets_kd import train_selected_subnets
+    from models.detection.ofa_mbv3_w12_fasterrcnn import get_ofa_mbv3_w12_fasterrcnn_model
+    model = get_ofa_mbv3_w12_fasterrcnn_model()
+    import os
+    if os.path.exists('ofa_mbv3_w12_fasterrcnn.pth'):
+        model = torch.load('ofa_mbv3_w12_fasterrcnn.pth')
+    from models.backbone.ofa_supernet import get_max_net_config, get_min_net_config
+    max_net_config = get_max_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    min_net_config = get_min_net_config(ofa_supernet_name='ofa_supernet_mbv3_w12')
+    train_selected_subnets(model, [max_net_config, min_net_config], max_net_config,
+                            10, 'ofa_mbv3_w12_fasterrcnn_2subnet_kd.pth', batch_size=2)
 if __name__ == '__main__':
     # train_fcos_mbv3_w12()
     # train_fcos_resnet50()
-    train_fasterrcnn_mbv3_w12()
+    # train_fasterrcnn_mbv3_w12()
     # train_fasterrcnn_resnet50()
     # test_calib_bs()
     # test_classification_api()
@@ -500,3 +524,5 @@ if __name__ == '__main__':
     # subnet_latency_test()
     # test_best_arch_configs()
     # test_best_arch_configs2()
+    # test_train_some_subnets()
+    test_train_subnets_with_kd()
