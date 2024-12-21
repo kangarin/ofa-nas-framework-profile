@@ -523,6 +523,6 @@ if __name__ == '__main__':
     # test_train_subnet2()
     # subnet_latency_test()
     # test_best_arch_configs()
-    # test_best_arch_configs2()
+    test_best_arch_configs2()
     # test_train_some_subnets()
-    test_train_subnets_with_kd()
+    # test_train_subnets_with_kd()

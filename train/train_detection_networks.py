@@ -41,16 +41,16 @@ def train(model, num_epochs, save_path, max_net_config, min_net_config,
     params_head = [{'params': params_head, 'lr': head_learning_rate}]
     
     # 创建优化器
-    # optimizer_backbone = torch.optim.SGD(params_backbone, 
-    #                                    lr=backbone_learning_rate, 
-    #                                    momentum=0.9, 
-    #                                    weight_decay=1e-4)
-    # optimizer_head = torch.optim.SGD(params_head, 
-    #                                 lr=head_learning_rate, 
-    #                                 momentum=0.9, 
-    #                                 weight_decay=1e-4)
-    optimizer_backbone = torch.optim.Adam(params_backbone, lr=backbone_learning_rate)
-    optimizer_head = torch.optim.Adam(params_head, lr=head_learning_rate)
+    optimizer_backbone = torch.optim.SGD(params_backbone, 
+                                       lr=backbone_learning_rate, 
+                                       momentum=0.9, 
+                                       weight_decay=1e-4)
+    optimizer_head = torch.optim.SGD(params_head, 
+                                    lr=head_learning_rate, 
+                                    momentum=0.9, 
+                                    weight_decay=1e-4)
+    # optimizer_backbone = torch.optim.Adam(params_backbone, lr=backbone_learning_rate)
+    # optimizer_head = torch.optim.Adam(params_head, lr=head_learning_rate)
     
     # 创建学习率调度器
     scheduler_backbone = torch.optim.lr_scheduler.CosineAnnealingLR(
