@@ -9,26 +9,48 @@ from evaluation.detection_accuracy_eval import eval_accuracy
 logger = setup_logger('train')
 
 def fpn_distill_loss(teacher_fpn, student_fpn):
-    """计算FPN特征图的蒸馏损失"""
+    """计算FPN特征图的蒸馏损失,带有特征归一化与注意力机制
+    Args:
+        teacher_fpn (dict): 教师网络的FPN特征, 每个level对应一个特征图
+        student_fpn (dict): 学生网络的FPN特征, 每个level对应一个特征图
+    Returns:
+        dist_loss (torch.Tensor): 蒸馏损失值
+    """
     dist_loss = 0
     for level in teacher_fpn.keys():
-        t_feat = teacher_fpn[level]
+        t_feat = teacher_fpn[level]  # shape: [B, C, H, W]
         s_feat = student_fpn[level]
         
-        # 计算attention map
-        t_attention = torch.sum(torch.pow(t_feat, 2), dim=1, keepdim=True)
+        # 1. Channel-wise L2归一化
+        t_feat = torch.nn.functional.normalize(t_feat, p=2, dim=1)
+        s_feat = torch.nn.functional.normalize(s_feat, p=2, dim=1)
+        
+        # 2. 计算空间注意力图 (对channel维度求和)
+        t_attention = torch.sum(torch.pow(t_feat, 2), dim=1, keepdim=True)  # [B, 1, H, W]
         s_attention = torch.sum(torch.pow(s_feat, 2), dim=1, keepdim=True)
         
-        # normalize attention maps
-        t_attention = torch.nn.functional.normalize(t_attention.view(t_attention.size(0), -1), dim=1).view_as(t_attention)
-        s_attention = torch.nn.functional.normalize(s_attention.view(s_attention.size(0), -1), dim=1).view_as(s_attention)
+        # # 3. 对注意力图进行归一化 (对空间维度HW归一化)
+        # t_attention = t_attention.view(t_attention.size(0), -1)  # [B, H*W]
+        # s_attention = s_attention.view(s_attention.size(0), -1)
         
-        # attention guided feature distillation
-        t_feat = t_feat * t_attention 
+        # t_attention = torch.nn.functional.normalize(t_attention, p=2, dim=1)
+        # s_attention = torch.nn.functional.normalize(s_attention, p=2, dim=1)
+        
+        # t_attention = t_attention.view_as(teacher_fpn[level][:,:1,:,:])  # 恢复 [B, 1, H, W]
+        # s_attention = s_attention.view_as(student_fpn[level][:,:1,:,:])
+        
+        # 4. 用归一化后的注意力加权特征图
+        t_feat = t_feat * t_attention
         s_feat = s_feat * s_attention
         
-        # L2 loss
-        dist_loss += torch.nn.functional.mse_loss(s_feat, t_feat)
+        # 5. 计算MSE损失
+        level_loss = torch.nn.functional.mse_loss(s_feat, t_feat)
+        
+        # 6. 安全检查
+        if torch.isnan(level_loss) or torch.isinf(level_loss):
+            continue
+            
+        dist_loss += level_loss
     
     return dist_loss
 
